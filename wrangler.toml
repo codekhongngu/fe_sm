@@ -1,6 +1,7 @@
-name = "sm-frontend"
+name = "fe-sm"
 compatibility_date = "2026-04-03"
 pages_build_output_dir = "dist"
 
 [assets]
 directory = "./dist"
+not_found_handling = "single-page-application"

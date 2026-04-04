@@ -17,10 +17,12 @@
 
 ## 3) Cấu hình routing SPA
 
-- File `public/_redirects` đã được thêm với rule:
-  - `/* /index.html 200`
+- Với Pages: để Cloudflare dùng build output `dist` và fallback SPA mặc định của framework preset.
+- Với `wrangler deploy` (Workers Assets mode): fallback SPA được cấu hình trong `wrangler.toml`:
+  - `[assets]`
+  - `not_found_handling = "single-page-application"`
 
-Rule này đảm bảo truy cập trực tiếp các route như `/discipline/journey-90` vẫn render đúng trên Pages.
+Cấu hình này đảm bảo truy cập trực tiếp các route như `/discipline/journey-90` vẫn render đúng.
 
 ## 4) Deploy bằng CLI (tuỳ chọn)
 
