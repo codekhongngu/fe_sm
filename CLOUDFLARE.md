@@ -13,7 +13,7 @@
 - Nếu gọi trực tiếp backend:
   - `VITE_API_BASE_URL=https://api.your-domain.com`
 - Nếu đi qua Cloudflare Worker gateway:
-  - `VITE_API_BASE_URL=https://sm.<subdomain>.workers.dev/api`
+  - `VITE_API_BASE_URL=https://sm.<subdomain>.workers.dev`
 
 ## 3) Cấu hình routing SPA
 
