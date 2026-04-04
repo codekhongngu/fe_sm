@@ -5,7 +5,8 @@
 - Framework preset: `Vite`
 - Build command: `npm run cf:build`
 - Build output directory: `dist`
-- Root directory: `fe`
+- Root directory: `fe_sm` (nếu repo root đang chứa thư mục này)
+- Không cấu hình `wrangler deploy` trong Build command của Pages
 
 ## 2) Cấu hình biến môi trường trên Cloudflare Pages
 
@@ -27,6 +28,17 @@ Rule này đảm bảo truy cập trực tiếp các route như `/discipline/jou
 - Deploy: `npm run cf:deploy`
 
 Khi chạy deploy CLI lần đầu, dùng đúng project Pages đã tạo trên Cloudflare.
+
+Nếu thấy lỗi:
+
+```txt
+main = "src/index.ts"
+If are uploading a directory of assets...
+```
+
+thì đang chạy nhầm `wrangler deploy` (Workers mode). Với frontend này cần dùng:
+
+- `npx wrangler pages deploy dist`
 
 ## 5) Backend NestJS + Worker
 
