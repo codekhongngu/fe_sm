@@ -38,7 +38,7 @@ If are uploading a directory of assets...
 
 thì đang chạy nhầm `wrangler deploy` (Workers mode). Với frontend này cần dùng:
 
-- `npx wrangler pages deploy dist`
+- `wrangler pages deploy dist`
 
 ## 5) Backend NestJS + Worker
 
@@ -55,6 +55,6 @@ thì đang chạy nhầm `wrangler deploy` (Workers mode). Với frontend này c
   - `https://<worker>.workers.dev/health` phải trả JSON.
   - `https://<pages>.pages.dev` phải hiển thị giao diện React.
 - Nếu `workers.dev` trả HTML chứa `src/main.jsx` thì build/deploy Pages đang chạy sai chế độ (đang serve source thay vì `dist`), cần kiểm tra lại:
-  - Root directory = `fe`
+  - Root directory = `fe_sm` (hoặc `/` nếu đã chọn đúng thư mục app làm root)
   - Build command = `npm run cf:build`
   - Output directory = `dist`
