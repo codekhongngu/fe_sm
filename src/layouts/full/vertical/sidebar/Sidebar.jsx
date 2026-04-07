@@ -29,7 +29,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             to="/discipline/manager-review"
             className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
           >
-            Chấm điểm hành vi
+            Tra cứu nhật ký
           </NavLink>
         ) : null}
         {user?.role === 'ADMIN' ? (

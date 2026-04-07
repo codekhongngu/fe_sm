@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import userService from '../../../../services/api/userService';
 import { logout, selectAuth } from '../../../../store/auth/AuthSlice';
+import logo from '../../../../assets/images/logos/logo.png';
 
 const Header = () => {
   const dispatch = useDispatch();
@@ -47,32 +48,32 @@ const Header = () => {
   return (
     <header className="topbar">
       <div className="topbar-brand-wrap">
-        <span className="topbar-logo">✦</span>
+        <span className="topbar-logo" src={logo} alt="logo" />
         <strong className="topbar-brand">Hệ thống quản trị hành vi bán hàng</strong>
       </div>
 
       <nav className="topbar-menu">
         <NavLink to="/" end className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}>
-          Trung tâm cấu hình
+          Dashboard
         </NavLink>
-        <NavLink
+        {/* <NavLink
           to="/management/catalogs"
           className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
         >
           Cấu hình catalog
-        </NavLink>
+        </NavLink> */}
         <NavLink
           to="/discipline/journey-90"
           className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
         >
-          Lộ trình 90 ngày
+          Nhật ký hằng ngày
         </NavLink>
         {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
           <NavLink
             to="/discipline/manager-review"
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
           >
-            Chấm điểm hành vi
+            Tra cứu nhật ký
           </NavLink>
         ) : null}
         {user?.role === 'ADMIN' ? (

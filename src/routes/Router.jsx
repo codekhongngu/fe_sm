@@ -41,6 +41,14 @@ const Router = () => {
           }
         />
         <Route
+          path="discipline/manager-review/:journalId"
+          element={
+            <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>
+              <ManagerReviewPage />
+            </RoleGuard>
+          }
+        />
+        <Route
           path="management/catalogs"
           element={
             <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>

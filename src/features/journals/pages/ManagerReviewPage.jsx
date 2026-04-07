@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import evaluationService from '../../../services/api/evaluationService';
 import journalService from '../../../services/api/journalService';
 import AwarenessReviewForm from '../components/AwarenessReviewForm';
@@ -6,6 +7,9 @@ import EvaluationForm from '../components/EvaluationForm';
 import JournalCard from '../components/JournalCard';
 
 const ManagerReviewPage = () => {
+  const navigate = useNavigate();
+  const { journalId } = useParams();
+  const isDetailMode = Boolean(journalId);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -27,9 +31,11 @@ const ManagerReviewPage = () => {
       ]);
       setPendingJournals(Array.isArray(pending) ? pending : []);
       setAnalytics(weekly || null);
-      if (pending?.length > 0 && !selected) {
-        const detail = await journalService.getById(pending[0].id);
+      if (journalId) {
+        const detail = await journalService.getById(journalId);
         setSelected(detail);
+      } else {
+        setSelected(null);
       }
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được danh sách chờ đánh giá');
@@ -40,7 +46,7 @@ const ManagerReviewPage = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [journalId]);
 
   const filteredPendingJournals = useMemo(() => {
     return pendingJournals.filter((journal) => {
@@ -57,6 +63,9 @@ const ManagerReviewPage = () => {
   }, [pendingJournals, fromDate, toDate, employeeKeyword]);
 
   useEffect(() => {
+    if (journalId) {
+      return;
+    }
     if (!selected?.id) {
       return;
     }
@@ -68,11 +77,25 @@ const ManagerReviewPage = () => {
 
   const chooseJournal = async (journal) => {
     setErrorText('');
+    navigate(`/discipline/manager-review/${journal.id}`);
+  };
+
+  const reviewUrl = useMemo(() => {
+    if (!selected?.id) {
+      return '';
+    }
+    return `${window.location.origin}/discipline/manager-review/${selected.id}`;
+  }, [selected?.id]);
+
+  const copyReviewUrl = async () => {
+    if (!reviewUrl) {
+      return;
+    }
     try {
-      const detail = await journalService.getById(journal.id);
-      setSelected(detail);
+      await navigator.clipboard.writeText(reviewUrl);
+      setStatusText('Đã sao chép URL đánh giá riêng');
     } catch (error) {
-      setErrorText(error?.response?.data?.message || 'Không tải được chi tiết nhật ký');
+      setErrorText('Không thể sao chép URL');
     }
   };
 
@@ -100,22 +123,15 @@ const ManagerReviewPage = () => {
 
   return (
     <div className="review-v3-shell">
-      <div className="review-v3-topnav">
-        <div className="review-v3-brand">JournalEval</div>
-        <div className="review-v3-tabs">
-          <button className="active">Đánh giá</button>
-          <button>Lịch sử</button>
-          <button>Báo cáo</button>
-        </div>
-      </div>
-      <div className="review-v3-progress">
-        <div className="bar" />
-      </div>
       <div className="review-v3-main">
         <section className="review-title-block">
-          <h1 style={{ margin: 0 }}>Đánh giá Nhật Ký Nhân Viên</h1>
+          <h1 style={{ margin: 0 }}>
+            {isDetailMode ? 'Đánh giá chi tiết nhật ký nhân viên' : 'Tra cứu nhật ký nhân viên'}
+          </h1>
           <p style={{ margin: '6px 0 0', color: '#64748b' }}>
-            Không gian làm việc tĩnh lặng để phản hồi và phát triển năng lực đội ngũ.
+            {isDetailMode
+              ? 'Thực hiện đánh giá chi tiết theo từng hồ sơ nhân viên.'
+              : 'Tra cứu hồ sơ và mở trang đánh giá chi tiết theo từng nhân viên.'}
           </p>
         </section>
 
@@ -155,7 +171,7 @@ const ManagerReviewPage = () => {
         </div>
 
         <section className="card" style={{ marginBottom: 12 }}>
-          <h3 style={{ marginTop: 0 }}>Hồ sơ chờ duyệt</h3>
+          <h3 style={{ marginTop: 0 }}>Danh sách hồ sơ chờ đánh giá</h3>
           <div className="review-pending-row">
             {filteredPendingJournals.map((journal) => (
               <JournalCard key={journal.id} journal={journal} onSelect={chooseJournal} />
@@ -166,7 +182,7 @@ const ManagerReviewPage = () => {
           </div>
         </section>
 
-        {selected ? (
+        {isDetailMode && selected ? (
           <>
             <section className="review-info-card">
               <div className="review-info-head">
@@ -187,24 +203,37 @@ const ManagerReviewPage = () => {
                   <div className="review-value">{selected?.user?.username || '-'}</div>
                 </div>
               </div>
+              {/* <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                <input className="field" readOnly value={reviewUrl} />
+                <button className="field" type="button" onClick={copyReviewUrl}>
+                  Sao chép URL
+                </button>
+                <button
+                  className="field"
+                  type="button"
+                  onClick={() => navigate('/discipline/manager-review')}
+                >
+                  Quay lại tra cứu
+                </button>
+              </div> */}
             </section>
 
             <section className="review-bento">
               <div className="review-bento-card">
                 <div className="review-bento-title">Nhật ký nhận diện</div>
                 <div className="review-bento-content">
-                  Câu 1: {selected?.avoidance || '-'}<br />
-                  Câu 2: {selected?.selfLimit || '-'}<br />
-                  Câu 3: {selected?.earlyStop || '-'}<br />
-                  Câu 4: {selected?.blaming || '-'}
+                  Câu 1: Hôm nay tôi đã né điều gì? {selected?.avoidance || '-'}<br />
+                  Câu 2: Tôi có tự loại gói nào không? {selected?.selfLimit || '-'}<br />
+                  Câu 3: Tôi đã dừng tư vấn sớm ở điểm nào? {selected?.earlyStop || '-'}<br />
+                  Câu 4: Khi không bán được dịch vụ anh chị thường đỗ lỗi cho vấn đề gì? {selected?.blaming || '-'}
                 </div>
               </div>
               <div className="review-bento-card">
                 <div className="review-bento-title">Nhật ký giữ chuẩn</div>
                 <div className="review-bento-content">
-                  Câu 1: {selected?.standardsKeptText || '-'}<br />
-                  Câu 2: {selected?.backslideSigns || '-'}<br />
-                  Câu 3: {selected?.solution || '-'}
+                  Câu 1: Hôm nay tôi giữ được chuẩn nào? {selected?.standardsKeptText || '-'}<br />
+                  Câu 2: Dấu hiệu tụt chuẩn nào xuất hiện? {selected?.backslideSigns || '-'}<br />
+                  Câu 3: Tôi đã xử lý nó ra sao? {selected?.solution || '-'}
                 </div>
               </div>
             </section>
@@ -212,7 +241,7 @@ const ManagerReviewPage = () => {
             <AwarenessReviewForm
               journal={selected}
               onSubmit={(payload) =>
-                saveEvaluation(payload, 'Đã lưu phần chấm E-form Nhận diện')
+                saveEvaluation(payload, 'Đã lưu phần chấm nhật ký nhận diện hằng ngày')
               }
               saving={saving}
             />
@@ -220,14 +249,12 @@ const ManagerReviewPage = () => {
             <EvaluationForm
               journal={selected}
               onSubmit={(payload) =>
-                saveEvaluation(payload, 'Đã lưu phần chấm E-form Giữ chuẩn')
+                saveEvaluation(payload, 'Đã lưu phần chấm nhật ký giữ chuẩn thu nhập cao')
               }
               saving={saving}
             />
           </>
-        ) : (
-          <div className="card">Chọn một nhật ký từ danh sách chờ để chấm điểm.</div>
-        )}
+        ) : null}
       </div>
     </div>
   );

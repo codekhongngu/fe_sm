@@ -35,6 +35,9 @@ const JournalCard = ({ journal, onSelect }) => {
         Nhận diện: {awarenessDone ? 'Đã chấm' : 'Chưa chấm'} | Giữ chuẩn:{' '}
         {standardsDone ? 'Đã chấm' : 'Chưa chấm'}
       </div>
+      <div style={{ marginTop: 6, fontSize: 12, color: '#2563eb' }}>
+        Bấm để mở trang đánh giá chi tiết
+      </div>
     </button>
   );
 };
