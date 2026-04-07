@@ -57,3 +57,40 @@ npm install
 cp .env.example .env
 npm run dev
 ```
+
+## Build bằng Docker Compose
+
+```bash
+docker compose up -d --build
+```
+
+## Cấu hình biến môi trường (ENV)
+
+- Docker Compose đọc biến từ file `.env` tại thư mục gốc project.
+- Biến dùng cho build image:
+  - `VITE_API_BASE_URL`
+- Biến dùng cho map port container:
+  - `FE_PORT`
+
+Ví dụ `.env`:
+
+```env
+VITE_API_BASE_URL=https://be-sm.codekhongngu.workers.dev
+FE_PORT=8080
+```
+
+Lệnh cấu hình nhanh trên Linux/macOS:
+
+```bash
+export VITE_API_BASE_URL=https://be-sm.codekhongngu.workers.dev
+export FE_PORT=8080
+docker compose up -d --build
+```
+
+Lệnh cấu hình nhanh trên PowerShell:
+
+```powershell
+$env:VITE_API_BASE_URL="https://be-sm.codekhongngu.workers.dev"
+$env:FE_PORT="8080"
+docker compose up -d --build
+```

@@ -260,7 +260,7 @@ const Journey90Page = () => {
       });
       await loadJournals();
       setSelectedDateKey(todayKey);
-      setInfoText('Đã lưu E-form Giữ chuẩn thành công');
+      setInfoText('Đã lưu nhật ký giữ chuẩn thu nhập cao thành công');
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Nộp nhật ký thất bại');
     } finally {
@@ -298,7 +298,7 @@ const Journey90Page = () => {
       setErrorText('');
       setInfoText('');
       if (!form.avoidance || !form.selfLimit || !form.earlyStop || !form.blaming) {
-        setErrorText('Vui lòng hoàn thành 4 câu hỏi của E-form Nhận diện');
+        setErrorText('Vui lòng hoàn thành 4 câu hỏi của nhật ký nhận diện hằng ngày');
         return;
       }
       try {
@@ -309,11 +309,11 @@ const Journey90Page = () => {
           earlyStop: normalizeText(form.earlyStop),
           blaming: normalizeText(form.blaming),
         });
-        setInfoText('Đã lưu E-form Nhận diện. Tiếp tục sang E-form Giữ chuẩn.');
+        setInfoText('Đã lưu nhật ký nhận diện hàng ngày. Tiếp tục sang nhật ký giữ chuẩn hàng ngày');
         setActiveEform('standards');
         await loadJournals();
       } catch (error) {
-        setErrorText(error?.response?.data?.message || 'Lưu E-form Nhận diện thất bại');
+        setErrorText(error?.response?.data?.message || 'Lưu nhật ký nhận diện hàng ngày thất bại');
       }
     };
     run();
@@ -338,7 +338,7 @@ const Journey90Page = () => {
             <div className="journey-form journey-form-modern">
               <div className="journey-eform-header">
                 <div>
-                  <div className="journey-eform-chip">Thực hành nhận diện</div>
+                  <div className="journey-eform-chip">{activeEform === 'awareness' ? 'Nhật ký nhận diện hàng ngày' : 'Nhật ký giữ chuẩn hàng ngày'}</div>
                   <h3 className="journey-eform-title">
                     {activeEform === 'awareness'
                       ? 'Nhật ký nhận diện hàng ngày'
@@ -360,13 +360,13 @@ const Journey90Page = () => {
                   className={`journey-eform-tab ${activeEform === 'awareness' ? 'active' : ''}`}
                   onClick={() => setActiveEform('awareness')}
                 >
-                  E-form 1 (Nhận diện)
+                  Nhật ký nhận diện hàng ngày
                 </button>
                 <button
                   className={`journey-eform-tab ${activeEform === 'standards' ? 'active' : ''}`}
                   onClick={() => setActiveEform('standards')}
                 >
-                  E-form 2 (Giữ chuẩn)
+                  Nhật ký giữ chuẩn thu nhập cao
                 </button>
               </div>
 
@@ -378,11 +378,11 @@ const Journey90Page = () => {
                       <span>Hôm nay tôi đã né điều gì?</span>
                     </div>
                     <div className="journey-eform-hint">
-                      Gợi ý: Nêu tình huống cụ thể bạn đã né tránh trong quá trình làm việc.
+                      {/* Gợi ý: Nêu tình huống cụ thể bạn đã né tránh trong quá trình làm việc. */}
                     </div>
                     <textarea
                       className="field journey-eform-textarea"
-                      placeholder="Tôi đã lờ đi khi khách hàng hỏi về..."
+                      placeholder="Vui lòng nhập điều gì tôi đã né trong ngày hôm nay."
                       rows={4}
                       value={form.avoidance}
                       onChange={(e) => setForm((prev) => ({ ...prev, avoidance: e.target.value }))}
@@ -395,11 +395,11 @@ const Journey90Page = () => {
                       <span>Tôi có tự loại gói nào không?</span>
                     </div>
                     <div className="journey-eform-hint">
-                      Gợi ý: Gói cước nào bạn cảm thấy không tự tin hoặc không dám tư vấn.
+                      {/* Gợi ý: Gói cước nào bạn cảm thấy không tự tin hoặc không dám tư vấn. */}
                     </div>
                     <textarea
                       className="field journey-eform-textarea"
-                      placeholder="Tôi nghĩ khách hàng không đủ khả năng dùng gói..."
+                      placeholder="Vui lòng nhập gói nào tôi không tự tin hoặc không."
                       rows={4}
                       value={form.selfLimit}
                       onChange={(e) => setForm((prev) => ({ ...prev, selfLimit: e.target.value }))}
@@ -412,11 +412,11 @@ const Journey90Page = () => {
                       <span>Tôi đã dừng tư vấn sớm ở điểm nào?</span>
                     </div>
                     <div className="journey-eform-hint">
-                      Gợi ý: Khoảnh khắc nào bạn quyết định ngắt cuộc trao đổi một cách vội vàng.
+                      {/* Gợi ý: Khoảnh khắc nào bạn quyết định ngắt cuộc trao đổi một cách vội vàng. */}
                     </div>
                     <textarea
                       className="field journey-eform-textarea"
-                      placeholder="Lúc khách hàng vừa có vẻ hơi phân vân, tôi đã..."
+                      placeholder="Vui lòng nhập điểm nào tôi đã dừng tư vấn sớm."
                       rows={4}
                       value={form.earlyStop}
                       onChange={(e) => setForm((prev) => ({ ...prev, earlyStop: e.target.value }))}
@@ -429,11 +429,11 @@ const Journey90Page = () => {
                       <span>Tại sao tôi không bán được dịch vụ?</span>
                     </div>
                     <div className="journey-eform-hint">
-                      Gợi ý: Trung thực để nhận diện nguyên nhân gốc, thay vì đổ lỗi.
+                      {/* Gợi ý: Trung thực để nhận diện nguyên nhân gốc, thay vì đổ lỗi. */}
                     </div>
                     <textarea
                       className="field journey-eform-textarea"
-                      placeholder="Có lẽ là do tôi chưa nắm vững kiến thức về..."
+                      placeholder="Vui lòng nhập lý do tôi không bán được dịch vụ."
                       rows={4}
                       value={form.blaming}
                       onChange={(e) => setForm((prev) => ({ ...prev, blaming: e.target.value }))}
@@ -448,7 +448,7 @@ const Journey90Page = () => {
                       <span>Hôm nay tôi giữ được chuẩn nào?</span>
                     </div>
                     <div className="journey-eform-hint">
-                      Nhập bằng văn bản: ví dụ "Hỏi sâu, tư vấn đủ, theo đến cùng".
+                      Trả lời của nhân viên: Hôm nay tôi giữ được chuẩn
                     </div>
                     <textarea
                       className="field journey-eform-textarea"
@@ -464,7 +464,8 @@ const Journey90Page = () => {
                       <span>Dấu hiệu tụt chuẩn nào xuất hiện?</span>
                     </div>
                     <div className="journey-eform-hint">
-                      Gợi ý: Chọn 1-2 dấu hiệu rõ nhất thay vì ghi quá dài.
+                      Giúp nhân viên phát hiện sớm khi mình bắt đầu quay lại thói quen cũ, kịp thời điều chỉnh hành vi bán hàng, duy trì chuẩn làm việc cao. Tạo thói quen tự giám sát bản thân.
+                      Trả lời của nhân viên: Dấu hiệu tụt chuẩn của tôi hôm nay là: 
                     </div>
                     <textarea
                       className="field journey-eform-textarea"
@@ -480,7 +481,8 @@ const Journey90Page = () => {
                       <span>Tôi đã xử lý nó ra sao?</span>
                     </div>
                     <div className="journey-eform-hint">
-                      Gợi ý: Mô tả hành động cụ thể để ngày mai tiếp tục.
+                      Giúp nhân viên không chỉ nhận ra vấn đề mà còn suy nghĩ về cách giải quyết, học cách điều chỉnh hành vi ngay trong công việc, hình thành thói quen giải quyết vấn đề chủ động.
+                      Trả lời của nhân viên: Tôi đã xử lý các dấu hiệu tụt chuẩn đó như sau:
                     </div>
                     <textarea
                       className="field journey-eform-textarea"
@@ -608,13 +610,13 @@ const Journey90Page = () => {
                 className="btn"
                 onClick={openTodayForm}
               >
-                Mở E-form hôm nay
+                Mở nhật ký hôm nay
               </button>
               <span className={`journey-mini-badge ${todayJournal?.awarenessSubmittedAt ? 'ok' : ''}`}>
-                E-form Nhận diện: {todayJournal?.awarenessSubmittedAt ? 'Đã nộp' : 'Chưa nộp'}
+                Nhật ký nhận diện hằng ngày: {todayJournal?.awarenessSubmittedAt ? 'Đã nộp' : 'Chưa nộp'}
               </span>
               <span className={`journey-mini-badge ${todayJournal?.standardsSubmittedAt ? 'ok' : ''}`}>
-                E-form Giữ chuẩn: {todayJournal?.standardsSubmittedAt ? 'Đã nộp' : 'Chưa nộp'}
+                Nhật ký giữ chuẩn thu nhập cao: {todayJournal?.standardsSubmittedAt ? 'Đã nộp' : 'Chưa nộp'}
               </span>
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Đã nộp: {progress.submittedCount}/90</div>
@@ -640,37 +642,28 @@ const Journey90Page = () => {
           {selectedJournal ? (
             <div className="journey-compare">
               <div className="journey-column">
-                <h4>Tôi tự nhận diện</h4>
+                <h4>Nhật ký nhận diện hằng ngày</h4>
                 <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
-                  <li>Né tránh khách hàng: {formatDisplayText(selectedJournal.avoidance)}</li>
-                  <li>Tự loại gói cước: {formatDisplayText(selectedJournal.selfLimit)}</li>
-                  <li>Dừng tư vấn sớm: {formatDisplayText(selectedJournal.earlyStop)}</li>
-                  <li>Lý do đổ lỗi: {formatDisplayText(selectedJournal.blaming)}</li>
+                  <li>Hôm nay tôi đã né điều gì: {formatDisplayText(selectedJournal.avoidance)}</li>
+                  <li>Tôi có tự loại gói nào không: {formatDisplayText(selectedJournal.selfLimit)}</li>
+                  <li>Tôi đã dừng tư vấn sớm ở điểm nào: {formatDisplayText(selectedJournal.earlyStop)}</li>
+                  <li>Khi không bán được dịch vụ anh chị thường đỗ lỗi cho vấn đề gì: {formatDisplayText(selectedJournal.blaming)}</li>
                 </ul>
                 <div style={{ marginTop: 14 }}>
-                  <strong>Chuẩn đã giữ</strong>
+                  <strong>Nhật ký giữ chuẩn thu nhập cao</strong>
+                  <strong>Hôm nay tôi giữ được chuẩn nào</strong>
                   <div style={{ marginTop: 6, fontSize: 13 }}>
-                    {selectedJournal?.standardsKept?.deepInquiry ? 'Hỏi sâu; ' : ''}
-                    {selectedJournal?.standardsKept?.fullConsult ? 'Tư vấn đủ; ' : ''}
-                    {selectedJournal?.standardsKept?.persistence ? 'Theo đến cùng' : ''}
-                    {selectedJournal?.standardsKeptText
-                      ? ` (${formatDisplayText(selectedJournal.standardsKeptText, '')})`
-                      : ''}
-                    {!selectedJournal?.standardsKept?.deepInquiry &&
-                    !selectedJournal?.standardsKept?.fullConsult &&
-                    !selectedJournal?.standardsKept?.persistence
-                      ? 'Chưa ghi nhận'
-                      : ''}
+                    {formatDisplayText(selectedJournal.standardsKeptText, 'Chưa ghi nhận')}
                   </div>
                 </div>
                 <div style={{ marginTop: 14 }}>
-                  <strong>Dấu hiệu tụt chuẩn</strong>
+                  <strong>Dấu hiệu tụt chuẩn nào xuất hiện</strong>
                   <div style={{ marginTop: 6, fontSize: 13 }}>
                     {formatDisplayText(selectedJournal.backslideSigns, 'Chưa ghi nhận')}
                   </div>
                 </div>
                 <div style={{ marginTop: 14 }}>
-                  <strong>Kế hoạch xử lý</strong>
+                  <strong>Tôi đã xử lý nó ra sao</strong>
                   <div style={{ marginTop: 6, fontSize: 13 }}>
                     {formatDisplayText(selectedJournal.solution, 'Chưa ghi nhận')}
                   </div>
@@ -766,13 +759,13 @@ const Journey90Page = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="coach-bubble">Quản lý chưa chấm điểm/coaching cho ngày này.</div>
+                  <div className="coach-bubble">Quản lý chưa chấm điểm cho ngày này.</div>
                 )}
               </div>
             </div>
           ) : (
             <div className="coach-bubble">
-              Ngày này chưa có dữ liệu nhật ký. Hãy duy trì kỷ luật để hoàn thành lộ trình 90 ngày.
+              Ngày này chưa có dữ liệu nhật ký. Hãy duy trì kỷ luật để hoàn thành lộ trình.
             </div>
           )}
         </section>

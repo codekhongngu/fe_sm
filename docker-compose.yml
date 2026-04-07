@@ -1,0 +1,12 @@
+services:
+  frontend:
+    container_name: sm-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://be-sm.codekhongngu.workers.dev}
+    image: sm-frontend:latest
+    ports:
+      - "${FE_PORT:-8080}:80"
+    restart: unless-stopped
