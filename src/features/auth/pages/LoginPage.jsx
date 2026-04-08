@@ -26,7 +26,7 @@ const LoginPage = () => {
   return (
     <div className="login-screen">
       <form onSubmit={submit} className="login-card">
-        <div style={{ color: '#0074ba', fontWeight: 700, marginBottom: 6 }}>SM PLATFORM</div>
+        <div style={{ color: '#0074ba', fontWeight: 700, marginBottom: 6 }}>Hệ Thống Quản Trị Hành Vi Bán Hàng</div>
         <h2>Đăng nhập</h2>
         <input
           placeholder="Username"
