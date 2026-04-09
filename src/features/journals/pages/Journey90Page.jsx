@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import journalService from '../../../services/api/journalService';
+import JourneyTimelineStepper from '../components/v2/JourneyTimelineStepper';
+import Form2BehaviorChecklist from '../components/v2/Form2BehaviorChecklist';
 
 const toDateKey = (date) => {
   const y = date.getFullYear();
@@ -73,6 +75,10 @@ const Journey90Page = () => {
     standardsKeptText: '',
     backslideSigns: '',
     solution: '',
+    customersMet: '',
+    deepInquiry: false,
+    fullConsult: false,
+    persistence: false,
   });
   const [submitting, setSubmitting] = useState(false);
   const [infoText, setInfoText] = useState('');
@@ -247,9 +253,30 @@ const Journey90Page = () => {
         backslideSigns: normalizeText(form.backslideSigns),
         solution: normalizeText(form.solution),
       });
+      setInfoText('Đã lưu nhật ký giữ chuẩn thu nhập cao thành công. Tiếp tục sang Mẫu 2: Checklist hành vi');
+      setActiveEform('behavior');
+      await loadJournals();
+      setSelectedDateKey(todayKey);
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Nộp nhật ký thất bại');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitBehaviorForm = async (payload) => {
+    setErrorText('');
+    setInfoText('');
+    setSubmitting(true);
+    try {
+      await journalService.submitBehavior({
+        reportDate: todayKey,
+        ...payload
+      });
       setShowForm(false);
       setActiveEform('awareness');
-      setForm({
+      setForm(prev => ({
+        ...prev,
         avoidance: '',
         selfLimit: '',
         earlyStop: '',
@@ -257,12 +284,32 @@ const Journey90Page = () => {
         standardsKeptText: '',
         backslideSigns: '',
         solution: '',
-      });
+        customersMet: '',
+        deepInquiry: false,
+        fullConsult: false,
+        persistence: false,
+      }));
       await loadJournals();
       setSelectedDateKey(todayKey);
-      setInfoText('Đã lưu nhật ký giữ chuẩn thu nhập cao thành công');
+      setInfoText('Đã lưu Mẫu 2: Checklist Hành vi thành công');
+
+      // Tạo Telegram Share link
+      const employeeName = JSON.parse(localStorage.getItem('user'))?.fullName || 'Nhân viên';
+      const detailUrl = `${window.location.origin}/discipline/manager-review/${journalsByDate[todayKey]?.id || ''}`;
+      const msg = `[NHẬT KÝ 90 NGÀY]\nNhân viên: ${employeeName}\nNgày nộp: ${todayKey}\n\nĐã nộp đầy đủ Nhật ký Mẫu 1 và Mẫu 2.\nQuản lý vui lòng xem và đánh giá tại:\n${detailUrl}`;
+      const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(detailUrl)}&text=${encodeURIComponent(msg)}`;
+      
+      setInfoText(
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+          <span>Đã lưu Mẫu 2: Checklist Hành vi thành công</span>
+          <a href={telegramShareUrl} target="_blank" rel="noreferrer" className="btn" style={{ padding: '6px 12px', fontSize: '13px' }}>
+            Nhắn Telegram
+          </a>
+        </div>
+      );
+
     } catch (error) {
-      setErrorText(error?.response?.data?.message || 'Nộp nhật ký thất bại');
+      setErrorText(error?.response?.data?.message || 'Nộp Checklist Hành vi thất bại');
     } finally {
       setSubmitting(false);
     }
@@ -287,6 +334,10 @@ const Journey90Page = () => {
         standardsKeptText: normalizeText(detail?.standardsKeptText),
         backslideSigns: normalizeText(detail?.backslideSigns),
         solution: normalizeText(detail?.solution),
+        customersMet: detail?.customersMet || '',
+        deepInquiry: !!detail?.deepInquiry,
+        fullConsult: !!detail?.fullConsult,
+        persistence: !!detail?.persistence,
       });
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được dữ liệu hôm nay');
@@ -360,13 +411,19 @@ const Journey90Page = () => {
                   className={`journey-eform-tab ${activeEform === 'awareness' ? 'active' : ''}`}
                   onClick={() => setActiveEform('awareness')}
                 >
-                  Nhật ký nhận diện hàng ngày
+                  Mẫu 1: Nhận diện
                 </button>
                 <button
                   className={`journey-eform-tab ${activeEform === 'standards' ? 'active' : ''}`}
                   onClick={() => setActiveEform('standards')}
                 >
-                  Nhật ký giữ chuẩn thu nhập cao
+                  Mẫu 1: Giữ chuẩn
+                </button>
+                <button
+                  className={`journey-eform-tab ${activeEform === 'behavior' ? 'active' : ''}`}
+                  onClick={() => setActiveEform('behavior')}
+                >
+                  Mẫu 2: Hành vi
                 </button>
               </div>
 
@@ -440,7 +497,7 @@ const Journey90Page = () => {
                     />
                   </div>
                 </div>
-              ) : (
+              ) : activeEform === 'standards' ? (
                 <div className="journey-eform-grid standards">
                   <div className="journey-eform-card wide">
                     <div className="journey-eform-card-head">
@@ -492,22 +549,39 @@ const Journey90Page = () => {
                     />
                   </div>
                 </div>
+              ) : (
+                <div style={{ marginTop: '20px' }}>
+                  <Form2BehaviorChecklist
+                    userRole="EMPLOYEE"
+                    initialData={{
+                      customersMet: form.customersMet,
+                      deepInquiry: form.deepInquiry,
+                      fullConsult: form.fullConsult,
+                      persistence: form.persistence,
+                      status: todayJournal?.evaluation ? 'APPROVED' : 'PENDING'
+                    }}
+                    onSubmit={submitBehaviorForm}
+                    isSubmitting={submitting}
+                  />
+                </div>
               )}
 
-              <div className="journey-eform-actions">
-                <button className="btn outline" onClick={() => setShowForm(false)}>
-                  Đóng
-                </button>
-                {activeEform === 'awareness' ? (
-                  <button className="btn" onClick={saveAwarenessStep}>
-                    Lưu E-form Nhận diện
+              {activeEform !== 'behavior' && (
+                <div className="journey-eform-actions">
+                  <button className="btn outline" onClick={() => setShowForm(false)}>
+                    Đóng
                   </button>
-                ) : (
-                  <button className="btn" disabled={submitting} onClick={submitStandardsForm}>
-                    Lưu E-form Giữ chuẩn & Cam kết kỷ luật
-                  </button>
-                )}
-              </div>
+                  {activeEform === 'awareness' ? (
+                    <button className="btn" onClick={saveAwarenessStep}>
+                      Lưu E-form Nhận diện
+                    </button>
+                  ) : (
+                    <button className="btn" disabled={submitting} onClick={submitStandardsForm}>
+                      Lưu E-form Giữ chuẩn & Cam kết kỷ luật
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -625,6 +699,23 @@ const Journey90Page = () => {
           {infoText ? <div className="status-ok" style={{ marginBottom: 10 }}>{infoText}</div> : null}
           {errorText ? <div className="status-err" style={{ marginBottom: 10 }}>{errorText}</div> : null}
           {loading ? <div>Đang tải dữ liệu...</div> : null}
+
+          <div style={{ marginBottom: '24px' }}>
+            <JourneyTimelineStepper
+              currentDay={progress.currentDay}
+              totalDays={90}
+              logs={timelineEntries.map(entry => ({
+                dayNumber: Math.max(1, Math.floor((fromDateKey(entry.dateKey).getTime() - fromDateKey(cycleStartDateKey).getTime()) / 86400000) + 1),
+                status: entry.status
+              }))}
+              onSelectDay={(dayNum) => {
+                const cycleStart = fromDateKey(cycleStartDateKey);
+                const targetDate = new Date(cycleStart);
+                targetDate.setDate(cycleStart.getDate() + (dayNum - 1));
+                setSelectedDateKey(toDateKey(targetDate));
+              }}
+            />
+          </div>
 
           <div className="journey-detail-header">
             <h3 style={{ margin: 0, color: '#0f172a' }}>Chi tiết đối chiếu ngày {selectedDateKey || '--'}</h3>

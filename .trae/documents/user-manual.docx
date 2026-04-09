@@ -1,0 +1,164 @@
+HƯỚNG DẪN SỬ DỤNG HỆ THỐNG QUẢN TRỊ HÀNH VI BÁN HÀNG
+
+PHẦN 1: THÔNG TIN ĐĂNG NHẬP
+
+1. TÀI KHOẢN QUẢN TRỊ (ADMIN)
+- Tên đăng nhập: admin
+- Mật khẩu: Admin@123
+- Quyền hạn: Toàn quyền truy cập tất cả chức năng của hệ thống
+
+2. TÀI KHOẢN QUẢN LÝ (MANAGER)
+- Tên đăng nhập: chinhnk.bdh
+- Mật khẩu: Vnpt@123
+- Quyền hạn: Quản lý nhân viên, duyệt nhật ký, cấu hình catalog
+
+3. TÀI KHOẢN NHÂN VIÊN (EMPLOYEE)
+- Tên đăng nhập: thidt.bdh
+- Mật khẩu: Vnpt@123
+- Quyền hạn: Viết nhật ký hằng ngày, xem lịch sử nhật ký
+
+PHẦN 2: CÁC MÀN HÌNH CHÍNH
+
+I. TRANG CHỦ (DASHBOARD)
+- Mô tả: Trang tổng quan sau khi đăng nhập thành công
+- Chức năng: Hiển thị thông tin tóm tắt của hệ thống
+- Truy cập: Click vào logo hoặc chọn "Trung tâm cấu hình" từ menu
+
+II. CẤU HÌNH CATALOG
+- Mô tả: Quản lý danh mục sản phẩm/dịch vụ
+- Chức năng:
+  + Xem danh sách catalog
+  + Tạo mới catalog
+  + Chỉnh sửa thông tin catalog
+  + Kích hoạt/vô hiệu hóa catalog
+- Phân quyền: Chỉ Admin và Manager mới có quyền truy cập
+- Truy cập: Menu "Cấu hình catalog"
+
+III. LỘ TRÌNH 90 NGÀY
+- Mô tả: Quản lý nhật ký hành vi bán hàng trong 90 ngày
+- Chức năng:
+  + Viết nhật ký hằng ngày
+  + Xem lịch sử nhật ký
+  + Theo dõi tiến độ 90 ngày
+  + Nhận thông báo nhắc nhở
+- Phân quyền: Tất cả user đều có thể sử dụng
+- Truy cập: Menu "Lộ trình 90 ngày" hoặc "Nhật ký hằng ngày"
+
+IV. TRA CỨU NHẬT KÝ (MANAGER REVIEW)
+- Mô tả: Xem và đánh giá nhật ký của nhân viên
+- Chức năng:
+  + Xem danh sách nhật ký nhân viên
+  + Duyệt và đánh giá nhật ký
+  + Tra cứu theo nhân viên hoặc thời gian
+- Phân quyền: Chỉ Admin và Manager mới có quyền truy cập
+- Truy cập: Menu "Tra cứu nhật ký"
+
+V. CẤU HÌNH NGƯỜI DÙNG
+- Mô tả: Quản lý tài khoản người dùng trong hệ thống
+- Chức năng:
+  + Tạo mới tài khoản
+  + Chỉnh sửa thông tin user
+  + Cấp/quyền vai trò
+  + Kích hoạt/vô hiệu hóa tài khoản
+- Phân quyền: Chỉ Admin mới có quyền truy cập
+- Truy cập: Menu "Cấu hình người dùng"
+
+VI. CẤU HÌNH QUYỀN
+- Mô tả: Quản lý vai trò và phân quyền trong hệ thống
+- Chức năng:
+  + Tạo và quản lý vai trò
+  + Gán quyền cho từng vai trò
+  + Phân quyền chi tiết theo chức năng
+- Phân quyền: Chỉ Admin mới có quyền truy cập
+- Truy cập: Menu "Cấu hình quyền"
+
+PHẦN 3: HƯỚNG DẪN SỬ DỤNG THEO VAI TRÒ
+
+A. DÀNH CHO ADMIN (QUẢN TRỊ VIÊN)
+1. Đăng nhập bằng tài khoản admin/Admin@123
+2. Các chức năng có thể sử dụng:
+   - Truy cập toàn bộ menu trong hệ thống
+   - Quản lý người dùng (tạo, sửa, xóa)
+   - Cấu hình phân quyền chi tiết
+   - Quản lý catalog sản phẩm
+   - Xem và duyệt tất cả nhật ký
+   - Giám sát toàn bộ hệ thống
+
+B. DÀNH CHO MANAGER (QUẢN LÝ)
+1. Đăng nhập bằng tài khoản chinhnk.bdh/Vnpt@123
+2. Các chức năng có thể sử dụng:
+   - Xem dashboard tổng quan
+   - Cấu hình catalog sản phẩm
+   - Xem lộ trình 90 ngày của bản thân
+   - Tra cứu và duyệt nhật ký của nhân viên
+   - Không thể truy cập quản lý user và cấu hình quyền
+
+C. DÀNH CHO NHÂN VIÊN (EMPLOYEE)
+1. Đăng nhập bằng tài khoản thidt.bdh/Vnpt@123
+2. Các chức năng có thể sử dụng:
+   - Xem dashboard cá nhân
+   - Viết nhật ký hằng ngày theo lộ trình 90 ngày
+   - Xem lại lịch sử nhật ký của bản thân
+   - Không thể truy cập các chức năng quản trị
+
+PHẦN 4: CHỨC NĂNG CÁ NHÂN
+
+1. ĐỔI MẬT KHẨU
+- Thực hiện: Click nút "Đổi mật khẩu" ở góc phải header
+- Yêu cầu:
+  + Nhập mật khẩu hiện tại đúng
+  + Nhập mật khẩu mới (ít nhất 6 ký tự)
+  + Xác nhận mật khẩu mới khớp với mật khẩu vừa nhập
+- Lưu ý: Sau khi đổi mật khẩu thành công, hệ thống sẽ tự động đăng xuất
+
+2. ĐĂNG XUẤT
+- Thực hiện: Click nút "Đăng xuất" ở góc phải header
+- Tác dụng: Thoát khỏi hệ thống và quay về trang đăng nhập
+
+PHẦN 5: LƯU Ý QUAN TRỌNG
+
+1. BẢO MẬT:
+- Không chia sẻ tài khoản với người khác
+- Đổi mật khẩu định kỳ 3 tháng/lần
+- Sử dụng mật khẩu mạnh (kết hợp chữ hoa, thường, số và ký tự đặc biệt)
+
+2. HỖ TRỢ KỸ THUẬT:
+- Liên hệ IT nội bộ khi gặp sự cố
+- Cung cấp thông tin: tên đăng nhập, mô tả lỗi, thời gian xảy ra
+
+3. THỜI GIAN LÀM VIỆC:
+- Nhật ký cần được cập nhật hằng ngày
+- Thời hạn nộp nhật ký: trước 23:59 mỗi ngày
+- Manager sẽ duyệt nhật ký trong vòng 24h sau khi nhân viên nộp
+
+4. QUY ĐỊNH SỬ DỤNG:
+- Tuân thủ theo quy trình 90 ngày của công ty
+- Cập nhật đầy đủ thông tin theo form mẫu
+- Không xóa hoặc chỉnh sửa nhật ký đã được duyệt
+
+PHẦN 6: CÂU HỎI THƯỜNG GẶP
+
+Q1: Quên mật khẩu phải làm sao?
+A: Liên hệ Admin để được cấp lại mật khẩu mặc định, sau đó đổi lại mật khẩu mới.
+
+Q2: Không thể đăng nhập?
+A: Kiểm tra:
+- Tên đăng nhập và mật khẩu có đúng không
+- Caps Lock có đang bật không
+- Liên hệ Admin nếu tài khoản bị khóa
+
+Q3: Không thấy menu cần dùng?
+A: Kiểm tra quyền của tài khoản, có thể tài khoản không có quyền truy cập chức năng đó.
+
+Q4: Làm sao để thay đổi thông tin cá nhân?
+A: Liên hệ Admin để được hỗ trợ cập nhật thông tin.
+
+----------------------------------------
+
+Tài liệu này được cập nhật lần cuối vào tháng 4 năm 2026
+Phiên bản hệ thống: 1.0.0
+
+Mọi thắc mắc xin liên hệ:
+- Email: it-support@company.com
+- Số điện thoại: (024) 1234-5678
+- Địa chỉ: Phòng IT, Tầng 3, Tòa nhà A

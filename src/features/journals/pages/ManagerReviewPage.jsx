@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import axiosInstance from '../../../utils/http/axiosInstance';
 import evaluationService from '../../../services/api/evaluationService';
 import journalService from '../../../services/api/journalService';
 import AwarenessReviewForm from '../components/AwarenessReviewForm';
 import EvaluationForm from '../components/EvaluationForm';
 import JournalCard from '../components/JournalCard';
+import Form2BehaviorChecklist from '../components/v2/Form2BehaviorChecklist';
 
 const ManagerReviewPage = () => {
   const navigate = useNavigate();
@@ -253,6 +255,34 @@ const ManagerReviewPage = () => {
               }
               saving={saving}
             />
+            <div style={{ height: 1, background: '#e5eaef', margin: '20px 0' }} />
+            <div className="card" style={{ marginBottom: '20px' }}>
+              <h3 style={{ marginTop: 0 }}>Thẩm định Mẫu 2: Hành vi</h3>
+              <Form2BehaviorChecklist
+                userRole="MANAGER"
+                journalId={selected.id}
+                initialData={{
+                  customersMet: selected?.customersMet || 0,
+                  deepInquiry: !!selected?.deepInquiry,
+                  fullConsult: !!selected?.fullConsult,
+                  persistence: !!selected?.persistence,
+                  mgrDeepInquiry: !!selected?.evaluation?.mgr_eval_deep_q,
+                  mgrFullConsult: !!selected?.evaluation?.mgr_eval_full_cons,
+                  mgrPersistence: !!selected?.evaluation?.mgr_eval_follow,
+                  status: selected?.evaluation ? 'APPROVED' : 'PENDING'
+                }}
+                onSubmit={async (payload) => {
+                  try {
+                    await axiosInstance.patch(`/api/manager/logs/evaluate/${selected.id}`, payload);
+                    setStatusText('Đã lưu phần thẩm định Mẫu 2: Hành vi');
+                    await loadData();
+                  } catch (e) {
+                    setErrorText('Lưu thẩm định Mẫu 2 thất bại');
+                  }
+                }}
+                isSubmitting={saving}
+              />
+            </div>
           </>
         ) : null}
       </div>
