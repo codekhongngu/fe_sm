@@ -98,7 +98,7 @@ const DashboardPage = () => {
       const todayJournal = byDay.get(todayKey);
       const formStatusRows = [
         { form: 'Mẫu 1: Nhận diện', submitted: !!todayJournal?.awarenessSubmittedAt },
-        { form: 'Mẫu 1: Giữ chuẩn', submitted: !!todayJournal?.standardsSubmittedAt },
+        // { form: 'Mẫu 1: Giữ chuẩn', submitted: !!todayJournal?.standardsSubmittedAt },
         { form: 'Mẫu 2: Hành vi', submitted: !!logsToday?.form2 },
         { form: 'Mẫu 3: Thay đổi tư duy', submitted: !!logsToday?.form3 },
         { form: 'Mẫu 4: Báo cáo bán hàng', submitted: Array.isArray(logsToday?.form4) && logsToday.form4.length > 0 },
@@ -193,14 +193,14 @@ const DashboardPage = () => {
           </div>
           <div className="card">
             <div style={{ color: '#64748b' }}>Trạng thái thẩm định Mẫu 2</div>
-            <div style={{ fontSize: 24, fontWeight: 800 }}>
+            <div style={{ fontSize: 12, fontWeight: 800 }}>
               {employeeDashboard?.form2ReviewStatus === 'APPROVED'
-                ? 'ĐẠT'
+                ? 'Đạt'
                 : employeeDashboard?.form2ReviewStatus === 'PENDING'
-                  ? 'CHỜ DUYỆT'
+                  ? 'Chờ duyệt'
                   : employeeDashboard?.form2ReviewStatus === 'REJECTED'
-                    ? 'CHƯA ĐẠT'
-                    : 'CHƯA NỘP'}
+                    ? 'Chưa đạt'
+                    : 'Chưa nhập Mẫu 02'}
             </div>
           </div>
         </div>
