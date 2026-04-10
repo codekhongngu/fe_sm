@@ -14,6 +14,15 @@ const managerDailyScoreService = {
     axiosInstance.post('/manager-daily-scores/entry', payload).then((res) => res.data),
   getStatistics: (filters) =>
     axiosInstance.get('/manager-daily-scores/statistics', { params: filters }).then((res) => res.data),
+  exportStatistics: (filters) =>
+    axiosInstance
+      .get('/manager-daily-scores/statistics-export', { params: filters, responseType: 'blob' })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']
+            ?.match(/filename="?([^"]+)"?/)?.[1] || 'thong-ke-cham-diem.xlsx',
+      })),
   getAdminCriteria: () =>
     axiosInstance.get('/manager-daily-scores/admin/criteria').then((res) => res.data),
   createCriterion: (payload) =>

@@ -13,9 +13,10 @@ const SCORE_GUIDE_BY_ITEM_CODE = {
     'Kế hoạch >=15 khách có đầy đủ thông tin: 3\nKế hoạch >=10 khách có đầy đủ thông tin: 2\nKế hoạch >=5 khách có đầy đủ thông tin: 1',
   BEHAVIOR_PREPARE_CONSULT: 'Có ghi, đầy đủ: 2\nCó ghi, chưa đầy đủ: 1',
   BEHAVIOR_CUSTOMERS_CONTACTED:
-    '>=10 khách hàng: 10\n>=8 khách hàng: 8-9\n>=6 khách hàng: 6-7\n>=4 khách hàng: 4-5\n>=2 khách hàng: 2-3',
+    '>=10 khách hàng: 10\n>=8 khách hàng: 8-9\n>=6 khách hàng: 6-7\n>=4 khách hàng: 4-5\n>=2 khách hàng: 2-3\nLưu ý: nếu tiêu chí này > 0 thì Số cuộc gọi CSKH thành công phải = 0',
   BEHAVIOR_OLD_CUSTOMERS_CONSULTED: '>=4 khách hàng: 4\n>=3 khách hàng: 3\n>=2 khách hàng: 2\n>=1 khách hàng: 1',
-  BEHAVIOR_SUCCESSFUL_CARE_CALLS: '>=100 cuộc: 10\n>=90 cuộc: 8\n>=80 cuộc: 6\n>=60 cuộc: 4',
+  BEHAVIOR_SUCCESSFUL_CARE_CALLS:
+    '>=100 cuộc: 10\n>=90 cuộc: 8\n>=80 cuộc: 6\n>=60 cuộc: 4\nLưu ý: nếu tiêu chí này > 0 thì Số khách hàng tiếp cận phải = 0',
   BEHAVIOR_DAILY_CHECKLIST: 'Có ghi, đầy đủ, áp dụng đúng: 7\nCó ghi, chưa đầy đủ, chưa đúng: 1-7',
   BEHAVIOR_DIRECTOR_EVALUATION: 'Mẫu 6 (tối đa 9 điểm)',
   PERFORMANCE_RENEWAL_SERVICES: '>=3 dịch vụ: 10\n>=2 dịch vụ: 8\n>=1 dịch vụ: 6',
@@ -24,6 +25,10 @@ const SCORE_GUIDE_BY_ITEM_CODE = {
   PERFORMANCE_REVENUE: '>=1.000.000: 30\n>=800.000: 25\n>=600.000: 20\n>=400.000: 15\n>=200.000: 10\n>=100.000: 5',
   PERFORMANCE_RETURNING_REFERRED: 'Có khách hàng cũ giới thiệu khách mới: 2',
 };
+const BEHAVIOR_SECTION_CODE = 'BEHAVIOR';
+const BEHAVIOR_SECTION_MAX_SCORE = 35;
+const BEHAVIOR_CUSTOMERS_CONTACTED_CODE = 'BEHAVIOR_CUSTOMERS_CONTACTED';
+const BEHAVIOR_SUCCESSFUL_CARE_CALLS_CODE = 'BEHAVIOR_SUCCESSFUL_CARE_CALLS';
 
 const ManagerDailyScorePage = () => {
   const [loading, setLoading] = useState(false);
@@ -60,6 +65,11 @@ const ManagerDailyScorePage = () => {
     );
   }, [allCriteria, scoreMap]);
 
+  const criteriaByItemCode = useMemo(
+    () => new Map(allCriteria.map((item) => [item.itemCode, item])),
+    [allCriteria],
+  );
+
   const resolveScoreGuide = (itemCode) => SCORE_GUIDE_BY_ITEM_CODE[itemCode] || 'Theo quy định nội bộ';
 
   const validateBeforeSubmit = () => {
@@ -84,7 +94,46 @@ const ManagerDailyScorePage = () => {
         return false;
       }
     }
+    const behaviorTotal = allCriteria
+      .filter((item) => item.sectionCode === BEHAVIOR_SECTION_CODE)
+      .reduce((sum, item) => sum + Number(scoreMap[item.id] || 0), 0);
+    if (behaviorTotal > BEHAVIOR_SECTION_MAX_SCORE) {
+      setErrorText(
+        `Tổng điểm phần II. Thực hành hành vi không được vượt quá ${BEHAVIOR_SECTION_MAX_SCORE}`,
+      );
+      return false;
+    }
+    const customersContactedId = criteriaByItemCode.get(BEHAVIOR_CUSTOMERS_CONTACTED_CODE)?.id;
+    const successfulCareCallsId = criteriaByItemCode.get(BEHAVIOR_SUCCESSFUL_CARE_CALLS_CODE)?.id;
+    if (customersContactedId && successfulCareCallsId) {
+      const customersContactedScore = Number(scoreMap[customersContactedId] || 0);
+      const successfulCareCallsScore = Number(scoreMap[successfulCareCallsId] || 0);
+      if (customersContactedScore > 0 && successfulCareCallsScore > 0) {
+        setErrorText(
+          'Nếu tiêu chí Số khách hàng tiếp cận có điểm thì Số cuộc gọi CSKH thành công phải bằng 0 và ngược lại',
+        );
+        return false;
+      }
+    }
     return true;
+  };
+
+  const handleScoreChange = (criteriaId, value) => {
+    setScoreMap((prev) => {
+      const next = { ...prev, [criteriaId]: value };
+      const customersContactedId = criteriaByItemCode.get(BEHAVIOR_CUSTOMERS_CONTACTED_CODE)?.id;
+      const successfulCareCallsId = criteriaByItemCode.get(BEHAVIOR_SUCCESSFUL_CARE_CALLS_CODE)?.id;
+      if (!customersContactedId || !successfulCareCallsId) {
+        return next;
+      }
+      if (criteriaId === customersContactedId && Number(value) > 0) {
+        next[successfulCareCallsId] = 0;
+      }
+      if (criteriaId === successfulCareCallsId && Number(value) > 0) {
+        next[customersContactedId] = 0;
+      }
+      return next;
+    });
   };
 
   const loadEmployees = async (keyword = '') => {
@@ -126,6 +175,29 @@ const ManagerDailyScorePage = () => {
       employeeId: selectedEmployeeId || undefined,
     });
     setStats(data || null);
+  };
+
+  const exportStatistics = async () => {
+    setErrorText('');
+    setStatusText('');
+    try {
+      const result = await managerDailyScoreService.exportStatistics({
+        fromDate,
+        toDate,
+        employeeId: selectedEmployeeId || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất file Excel thống kê');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất file Excel thất bại');
+    }
   };
 
   const bootstrap = async () => {
@@ -277,9 +349,7 @@ const ManagerDailyScorePage = () => {
                 section={section}
                 scoreMap={scoreMap}
                 resolveScoreGuide={resolveScoreGuide}
-                onChangeScore={(criteriaId, value) =>
-                  setScoreMap((prev) => ({ ...prev, [criteriaId]: value }))
-                }
+                onChangeScore={handleScoreChange}
               />
             ))}
           </div>
@@ -315,9 +385,14 @@ const ManagerDailyScorePage = () => {
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'end' }}>
-              <button type="button" className="btn outline" onClick={loadStatistics}>
-                Làm mới thống kê
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn outline" onClick={loadStatistics}>
+                  Làm mới thống kê
+                </button>
+                <button type="button" className="btn" onClick={exportStatistics}>
+                  Xuất Excel
+                </button>
+              </div>
             </div>
           </div>
 

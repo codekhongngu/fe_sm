@@ -8,6 +8,7 @@ import LoginPage from '../features/auth/pages/LoginPage';
 import DashboardPage from '../features/dashboard/pages/DashboardPage';
 import CatalogPage from '../features/catalogs/pages/CatalogPage';
 import Journey90Page from '../features/journals/pages/Journey90Page';
+import WeeklyJournalPage from '../features/journals/pages/WeeklyJournalPage';
 import ManagerReviewPage from '../features/journals/pages/ManagerReviewPage';
 import ManagerDailyScorePage from '../features/manager-daily-scores/pages/ManagerDailyScorePage';
 import WeeklyReportPage from '../features/reports/pages/WeeklyReportPage';
@@ -34,6 +35,7 @@ const Router = () => {
       >
         <Route index element={<DashboardPage />} />
         <Route path="discipline/journey-90" element={<Journey90Page />} />
+        <Route path="discipline/weekly-journal" element={<WeeklyJournalPage />} />
         <Route
           path="discipline/manager-review"
           element={

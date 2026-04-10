@@ -277,7 +277,7 @@ const Journey90Page = () => {
     : 'missed';
 
   const availableForms = useMemo(() => {
-    return ['awareness', 'standards', 'behavior', 'form3', 'form4', 'form5', 'form8'];
+    return ['awareness', 'form3', 'form8'];
   }, []);
 
   const [infoText, setInfoText] = useState('');
@@ -539,8 +539,15 @@ const Journey90Page = () => {
           earlyStop: normalizeText(form.earlyStop),
           blaming: normalizeText(form.blaming),
         });
-        setInfoText('Đã lưu nhật ký nhận diện hàng ngày. Tiếp tục sang nhật ký giữ chuẩn hàng ngày');
-        setActiveEform('standards');
+        const nextIndex = availableForms.indexOf('awareness') + 1;
+        const nextForm = availableForms[nextIndex];
+        if (nextForm) {
+          setInfoText('Đã lưu nhật ký nhận diện hàng ngày. Tiếp tục sang biểu mẫu tiếp theo');
+          setActiveEform(nextForm);
+        } else {
+          setInfoText('Đã lưu nhật ký nhận diện hàng ngày thành công');
+          setShowForm(false);
+        }
         await loadJournals();
       } catch (error) {
         setErrorText(error?.response?.data?.message || 'Lưu nhật ký nhận diện hàng ngày thất bại');
@@ -568,16 +575,32 @@ const Journey90Page = () => {
             <div className="journey-form journey-form-modern">
               <div className="journey-eform-header">
                 <div>
-                  <div className="journey-eform-chip">{activeEform === 'awareness' ? 'Nhật ký nhận diện hàng ngày' : 'Nhật ký giữ chuẩn hàng ngày'}</div>
+                  <div className="journey-eform-chip">
+                    {activeEform === 'awareness'
+                      ? 'Nhật ký nhận diện hàng ngày'
+                      : activeEform === 'form3'
+                        ? 'Mẫu 3: Thay đổi Tư duy'
+                        : activeEform === 'form8'
+                          ? 'Mẫu 8: Củng cố niềm tin'
+                          : 'Nhật ký hằng ngày'}
+                  </div>
                   <h3 className="journey-eform-title">
                     {activeEform === 'awareness'
                       ? 'Nhật ký nhận diện hàng ngày'
-                      : 'Nhật ký giữ chuẩn hàng ngày'}
+                      : activeEform === 'form3'
+                        ? 'Mẫu 3: Thay đổi Tư duy'
+                        : activeEform === 'form8'
+                          ? 'Mẫu 8: Củng cố niềm tin'
+                          : 'Nhật ký hằng ngày'}
                   </h3>
                   <div className="journey-eform-subtitle">
                     {activeEform === 'awareness'
                       ? 'Dành vài phút để trung thực với bản thân và nhận diện điểm nghẽn.'
-                      : 'Ghi lại chuẩn đã giữ và cách xử lý tụt chuẩn để duy trì kỷ luật.'}
+                      : activeEform === 'form3'
+                        ? 'Ghi lại sự thay đổi tư duy và hành vi để nâng hiệu quả làm việc.'
+                        : activeEform === 'form8'
+                          ? 'Củng cố niềm tin mới bằng tình huống thực tế và kết quả đạt được.'
+                          : 'Theo dõi nhật ký làm việc hằng ngày.'}
                   </div>
                 </div>
                 <button className="btn outline" onClick={() => setShowForm(false)}>

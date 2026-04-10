@@ -4,7 +4,7 @@
 
 body {
   margin: 0;
-  font-family: 'Roboto', Arial, sans-serif;
+  font-family: 'Montserrat', Arial, sans-serif;
   background: #f4f8fb;
   color: #2a3547;
 }
@@ -85,14 +85,9 @@ a {
 .topbar-logo {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
-  background: #0369a1;
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 800;
+  border-radius: 4px;
+  object-fit: contain;
+  display: block;
 }
 
 .topbar-brand {

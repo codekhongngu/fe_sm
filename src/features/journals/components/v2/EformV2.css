@@ -3,8 +3,10 @@
   flex-direction: column;
   gap: 24px;
   width: 100%;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Montserrat', Arial, sans-serif;
 }
+
+
 
 /* 2-Column Layout for Desktop, Stack for Mobile */
 .eform-v2-grid {

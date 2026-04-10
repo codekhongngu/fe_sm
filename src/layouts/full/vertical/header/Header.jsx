@@ -48,7 +48,7 @@ const Header = () => {
   return (
     <header className="topbar">
       <div className="topbar-brand-wrap">
-        <span className="topbar-logo" src={logo} alt="logo" />
+        <img className="topbar-logo" src={logo} alt="logo" />
         <strong className="topbar-brand">Hệ thống quản trị hành vi bán hàng</strong>
       </div>
 
@@ -68,6 +68,14 @@ const Header = () => {
         >
           Nhật ký hằng ngày
         </NavLink>
+        {user?.role === 'EMPLOYEE' ? (
+          <NavLink
+            to="/discipline/weekly-journal"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Nhật ký hằng tuần
+          </NavLink>
+        ) : null}
         {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
           <NavLink
             to="/discipline/manager-review"
