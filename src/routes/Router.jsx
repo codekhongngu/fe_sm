@@ -9,6 +9,8 @@ import DashboardPage from '../features/dashboard/pages/DashboardPage';
 import CatalogPage from '../features/catalogs/pages/CatalogPage';
 import Journey90Page from '../features/journals/pages/Journey90Page';
 import ManagerReviewPage from '../features/journals/pages/ManagerReviewPage';
+import ManagerDailyScorePage from '../features/manager-daily-scores/pages/ManagerDailyScorePage';
+import WeeklyReportPage from '../features/reports/pages/WeeklyReportPage';
 import UserManagementPage from '../features/system-administration/pages/UserManagement/UserManagementPage';
 import RolePermissionPage from '../features/system-administration/pages/RolePermissionManagement/RolePermissionPage';
 import { selectAuth } from '../store/auth/AuthSlice';
@@ -45,6 +47,22 @@ const Router = () => {
           element={
             <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>
               <ManagerReviewPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="discipline/manager-daily-score"
+          element={
+            <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>
+              <ManagerDailyScorePage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="discipline/weekly-report"
+          element={
+            <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>
+              <WeeklyReportPage />
             </RoleGuard>
           }
         />

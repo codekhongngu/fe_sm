@@ -26,6 +26,10 @@ const userService = {
       })
       .then((res) => res.data);
   },
+  downloadImportTemplate: () =>
+    axiosInstance
+      .get('/users/import-excel-template', { responseType: 'blob' })
+      .then((res) => res.data),
 };
 
 export default userService;

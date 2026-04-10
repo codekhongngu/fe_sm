@@ -3,10 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axiosInstance from '../../../utils/http/axiosInstance';
 import evaluationService from '../../../services/api/evaluationService';
 import journalService from '../../../services/api/journalService';
-import AwarenessReviewForm from '../components/AwarenessReviewForm';
-import EvaluationForm from '../components/EvaluationForm';
 import JournalCard from '../components/JournalCard';
 import Form2BehaviorChecklist from '../components/v2/Form2BehaviorChecklist';
+import Form38MindsetBelief from '../components/v2/Form38MindsetBelief';
+import Form4SalesReport from '../components/v2/Form4SalesReport';
+import Form5QuickNote from '../components/v2/Form5QuickNote';
+import Form8BeliefTransformations from '../components/v2/Form8BeliefTransformations';
 
 const ManagerReviewPage = () => {
   const navigate = useNavigate();
@@ -35,6 +37,54 @@ const ManagerReviewPage = () => {
       setAnalytics(weekly || null);
       if (journalId) {
         const detail = await journalService.getById(journalId);
+        const targetUserId = detail.userId || detail.user?.id;
+        const logDate = detail.reportDate;
+        let extraLogsData = {};
+        if (targetUserId && logDate) {
+          extraLogsData = await journalService.getLogsHistory(targetUserId, logDate).catch(() => ({}));
+        }
+
+        detail.behaviorLogId = extraLogsData?.form2?.id || '';
+        detail.customersMet = extraLogsData?.form2?.customerMetCount ?? detail.customersMet;
+        detail.deepInquiry = extraLogsData?.form2?.askedDeepQuestion ?? detail.deepInquiry;
+        detail.fullConsult = extraLogsData?.form2?.fullConsultation ?? detail.fullConsult;
+        detail.persistence = extraLogsData?.form2?.followedThrough ?? detail.persistence;
+
+        if (extraLogsData?.form2) {
+          detail.form2Status = extraLogsData.form2.status || 'PENDING';
+          detail.form2MgrEvalDeepQ = !!extraLogsData.form2.mgrEvalDeepQ;
+          detail.form2MgrEvalFullCons = !!extraLogsData.form2.mgrEvalFullCons;
+          detail.form2MgrEvalFollow = !!extraLogsData.form2.mgrEvalFollow;
+        }
+
+        detail.form3OldMindset = extraLogsData?.form3?.negativeThought || '';
+        detail.form3NewMindset = extraLogsData?.form3?.newMindset || '';
+        detail.form3ActionChange = extraLogsData?.form3?.behaviorChange || '';
+        
+        detail.form4Rows = Array.isArray(extraLogsData?.form4)
+          ? extraLogsData.form4.map((item) => ({
+              customerName: item.customerName || '',
+              customerIssue: item.customerIssue || '',
+              consequence: item.consequence || '',
+              solutionOffered: item.solutionOffered || '',
+              valueBasedPricing: item.valueBasedPricing || '',
+              result: item.result || '',
+            }))
+          : [];
+        
+        detail.form5Lesson = extraLogsData?.form5?.tomorrowLesson || '';
+        detail.form5Action = extraLogsData?.form5?.differentAction || '';
+        
+        detail.form8Rows = Array.isArray(extraLogsData?.form8)
+          ? extraLogsData.form8.map((item) => ({
+              situation: item.situation || '',
+              oldBelief: item.oldBelief || '',
+              newChosenBelief: item.newChosenBelief || '',
+              newBehavior: item.newBehavior || '',
+              result: item.result || '',
+            }))
+          : [];
+
         setSelected(detail);
       } else {
         setSelected(null);
@@ -101,27 +151,11 @@ const ManagerReviewPage = () => {
     }
   };
 
-  const saveEvaluation = async (payload, successText) => {
-    if (!selected?.id) return;
-    setSaving(true);
-    setErrorText('');
-    setStatusText('');
-    try {
-      if (payload.awarenessReviewed !== undefined || payload.awarenessManagerNote !== undefined) {
-        await evaluationService.updateAwarenessByJournalId(selected.id, payload);
-      } else {
-        await evaluationService.updateStandardsByJournalId(selected.id, payload);
-      }
-      setStatusText(successText);
-      await loadData();
-      const detail = await journalService.getById(selected.id);
-      setSelected(detail);
-    } catch (error) {
-      setErrorText(error?.response?.data?.message || 'Lưu đánh giá thất bại');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const hasForm2 = !!selected?.behaviorLogId;
+  const hasForm3 = !!(selected?.form3OldMindset || selected?.form3NewMindset || selected?.form3ActionChange);
+  const hasForm4 = Array.isArray(selected?.form4Rows) && selected.form4Rows.length > 0;
+  const hasForm5 = !!(selected?.form5Lesson || selected?.form5Action);
+  const hasForm8 = Array.isArray(selected?.form8Rows) && selected.form8Rows.length > 0;
 
   return (
     <div className="review-v3-shell">
@@ -240,49 +274,143 @@ const ManagerReviewPage = () => {
               </div>
             </section>
 
-            <AwarenessReviewForm
-              journal={selected}
-              onSubmit={(payload) =>
-                saveEvaluation(payload, 'Đã lưu phần chấm nhật ký nhận diện hằng ngày')
-              }
-              saving={saving}
-            />
-            <div style={{ height: 1, background: '#e5eaef', margin: '10px 0' }} />
-            <EvaluationForm
-              journal={selected}
-              onSubmit={(payload) =>
-                saveEvaluation(payload, 'Đã lưu phần chấm nhật ký giữ chuẩn thu nhập cao')
-              }
-              saving={saving}
-            />
-            <div style={{ height: 1, background: '#e5eaef', margin: '20px 0' }} />
+            <section className="card" style={{ marginBottom: '20px' }}>
+              <h3 style={{ marginTop: 0 }}>Tổng hợp biểu mẫu đã nhập trong ngày</h3>
+              <div className="review-bento">
+                <div className="review-bento-card">
+                  <div className="review-bento-title">Mẫu 2: Hành vi</div>
+                  <div className="review-bento-content">
+                    Trạng thái: {hasForm2 ? 'Đã nhập' : 'Chưa nhập'}<br />
+                    Số khách gặp: {hasForm2 ? selected?.customersMet ?? 0 : '-'}<br />
+                    Hỏi sâu: {hasForm2 ? (selected?.deepInquiry ? 'Có' : 'Không') : '-'}<br />
+                    Tư vấn đủ: {hasForm2 ? (selected?.fullConsult ? 'Có' : 'Không') : '-'}<br />
+                    Theo đến cùng: {hasForm2 ? (selected?.persistence ? 'Có' : 'Không') : '-'}
+                  </div>
+                </div>
+                <div className="review-bento-card">
+                  <div className="review-bento-title">Mẫu 3: Thay đổi Tư duy</div>
+                  <div className="review-bento-content">
+                    Trạng thái: {hasForm3 ? 'Đã nhập' : 'Chưa nhập'}<br />
+                    Suy nghĩ cũ: {hasForm3 ? selected?.form3OldMindset || '-' : '-'}<br />
+                    Tư duy mới: {hasForm3 ? selected?.form3NewMindset || '-' : '-'}<br />
+                    Hành vi thay đổi: {hasForm3 ? selected?.form3ActionChange || '-' : '-'}
+                  </div>
+                </div>
+                <div className="review-bento-card">
+                  <div className="review-bento-title">Mẫu 4: Báo cáo Bán hàng</div>
+                  <div className="review-bento-content">
+                    Trạng thái: {hasForm4 ? 'Đã nhập' : 'Chưa nhập'}<br />
+                    Số dòng khai báo: {hasForm4 ? selected.form4Rows.length : 0}
+                  </div>
+                </div>
+                <div className="review-bento-card">
+                  <div className="review-bento-title">Mẫu 5: Ghi chép cuối ngày</div>
+                  <div className="review-bento-content">
+                    Trạng thái: {hasForm5 ? 'Đã nhập' : 'Chưa nhập'}<br />
+                    Việc sẽ làm khác đi: {hasForm5 ? selected?.form5Action || '-' : '-'}<br />
+                    Bài học ngày mai: {hasForm5 ? selected?.form5Lesson || '-' : '-'}
+                  </div>
+                </div>
+                <div className="review-bento-card">
+                  <div className="review-bento-title">Mẫu 8: Củng cố Niềm tin</div>
+                  <div className="review-bento-content">
+                    Trạng thái: {hasForm8 ? 'Đã nhập' : 'Chưa nhập'}<br />
+                    Số dòng khai báo: {hasForm8 ? selected.form8Rows.length : 0}
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <div className="card" style={{ marginBottom: '20px' }}>
               <h3 style={{ marginTop: 0 }}>Thẩm định Mẫu 2: Hành vi</h3>
-              <Form2BehaviorChecklist
-                userRole="MANAGER"
-                journalId={selected.id}
-                initialData={{
-                  customersMet: selected?.customersMet || 0,
-                  deepInquiry: !!selected?.deepInquiry,
-                  fullConsult: !!selected?.fullConsult,
-                  persistence: !!selected?.persistence,
-                  mgrDeepInquiry: !!selected?.evaluation?.mgr_eval_deep_q,
-                  mgrFullConsult: !!selected?.evaluation?.mgr_eval_full_cons,
-                  mgrPersistence: !!selected?.evaluation?.mgr_eval_follow,
-                  status: selected?.evaluation ? 'APPROVED' : 'PENDING'
-                }}
-                onSubmit={async (payload) => {
-                  try {
-                    await axiosInstance.patch(`/api/manager/logs/evaluate/${selected.id}`, payload);
-                    setStatusText('Đã lưu phần thẩm định Mẫu 2: Hành vi');
-                    await loadData();
-                  } catch (e) {
-                    setErrorText('Lưu thẩm định Mẫu 2 thất bại');
-                  }
-                }}
-                isSubmitting={saving}
-              />
+              {selected?.behaviorLogId ? (
+                <Form2BehaviorChecklist
+                  userRole="MANAGER"
+                  journalId={selected.id}
+                  initialData={{
+                    customersMet: selected?.customersMet || 0,
+                    deepInquiry: !!selected?.deepInquiry,
+                    fullConsult: !!selected?.fullConsult,
+                    persistence: !!selected?.persistence,
+                    mgrDeepInquiry: !!selected?.form2MgrEvalDeepQ,
+                    mgrFullConsult: !!selected?.form2MgrEvalFullCons,
+                    mgrPersistence: !!selected?.form2MgrEvalFollow,
+                    status: selected?.form2Status || 'PENDING'
+                  }}
+                  onSubmit={async (payload) => {
+                    try {
+                      setSaving(true);
+                      await axiosInstance.patch(`/api/manager/logs/evaluate/${selected.behaviorLogId}`, payload);
+                      setStatusText('Đã lưu phần thẩm định Mẫu 2: Hành vi');
+                      await loadData();
+                    } catch (e) {
+                      setErrorText(e?.response?.data?.message || 'Lưu thẩm định Mẫu 2 thất bại');
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  isSubmitting={saving}
+                />
+              ) : (
+                <div className="coach-bubble">Nhân viên chưa khai báo Mẫu 2: Hành vi cho ngày này.</div>
+              )}
             </div>
+
+            {/* Các Mẫu 3, 4, 5, 8 hiển thị dạng Read-only nếu có dữ liệu */}
+            {(selected?.form3OldMindset || selected?.form3NewMindset || selected?.form3ActionChange) && (
+              <div className="card" style={{ marginBottom: '20px' }}>
+                <h3 style={{ marginTop: 0 }}>Mẫu 3: Thay đổi Tư duy</h3>
+                <Form38MindsetBelief
+                  userRole="MANAGER"
+                  initialData={{
+                    oldMindset: selected.form3OldMindset,
+                    newMindset: selected.form3NewMindset,
+                    actionChange: selected.form3ActionChange,
+                    status: selected?.evaluation ? 'APPROVED' : 'PENDING'
+                  }}
+                />
+              </div>
+            )}
+
+            {Array.isArray(selected?.form4Rows) && selected.form4Rows.length > 0 && (
+              <div className="card" style={{ marginBottom: '20px' }}>
+                <h3 style={{ marginTop: 0 }}>Mẫu 4: Báo cáo Bán hàng</h3>
+                <Form4SalesReport
+                  userRole="MANAGER"
+                  initialData={{
+                    salesActivities: selected.form4Rows,
+                    status: selected?.evaluation ? 'APPROVED' : 'PENDING'
+                  }}
+                />
+              </div>
+            )}
+
+            {(selected?.form5Lesson || selected?.form5Action) && (
+              <div className="card" style={{ marginBottom: '20px' }}>
+                <h3 style={{ marginTop: 0 }}>Mẫu 5: Ghi chép cuối ngày</h3>
+                <Form5QuickNote
+                  userRole="MANAGER"
+                  initialData={{
+                    lessonLearned: selected.form5Lesson,
+                    actionPlan: selected.form5Action,
+                    status: selected?.evaluation ? 'APPROVED' : 'PENDING'
+                  }}
+                />
+              </div>
+            )}
+
+            {Array.isArray(selected?.form8Rows) && selected.form8Rows.length > 0 && (
+              <div className="card" style={{ marginBottom: '20px' }}>
+                <h3 style={{ marginTop: 0 }}>Mẫu 8: Củng cố Niềm tin</h3>
+                <Form8BeliefTransformations
+                  userRole="MANAGER"
+                  initialData={{
+                    beliefTransformations: selected.form8Rows,
+                    status: selected?.evaluation ? 'APPROVED' : 'PENDING'
+                  }}
+                />
+              </div>
+            )}
           </>
         ) : null}
       </div>

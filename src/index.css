@@ -1098,3 +1098,81 @@ textarea.field {
     grid-template-columns: 1fr;
   }
 }
+
+.manager-daily-score-filter-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr;
+  gap: 10px;
+}
+
+.manager-daily-score-table-wrap {
+  overflow: auto;
+  border: 1px solid #e5eaef;
+  border-radius: 10px;
+}
+
+.manager-daily-score-table {
+  min-width: 1200px;
+}
+
+.manager-daily-score-table th,
+.manager-daily-score-table td {
+  white-space: normal;
+}
+
+.manager-daily-score-form-list {
+  display: grid;
+  gap: 12px;
+}
+
+.manager-daily-score-section {
+  border: 1px solid #e5eaef;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.manager-daily-score-section-title {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 700;
+  padding: 10px 12px;
+}
+
+.manager-daily-score-row {
+  display: grid;
+  grid-template-columns: 70px 1.1fr 1.6fr 140px;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid #edf2f7;
+  align-items: start;
+}
+
+.manager-daily-score-col.stt {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.manager-daily-score-col.content {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.manager-daily-score-guide-box {
+  min-height: 72px;
+  border: 1px solid #dbe5f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 8px 10px;
+  white-space: pre-line;
+  color: #334155;
+}
+
+@media (max-width: 992px) {
+  .manager-daily-score-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-daily-score-row {
+    grid-template-columns: 1fr;
+  }
+}

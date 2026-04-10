@@ -17,7 +17,24 @@ import {
 } from 'recharts';
 import { useSelector } from 'react-redux';
 import dashboardService from '../../../services/api/dashboardService';
+import evaluationService from '../../../services/api/evaluationService';
+import journalService from '../../../services/api/journalService';
+import managerDailyScoreService from '../../../services/api/managerDailyScoreService';
 import { selectAuth } from '../../../store/auth/AuthSlice';
+
+const toDateKey = (value) => {
+  const date = value instanceof Date ? value : new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const daysAgoKey = (days) => {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return toDateKey(date);
+};
 
 const DashboardPage = () => {
   const { user } = useSelector(selectAuth);
@@ -27,16 +44,34 @@ const DashboardPage = () => {
   const [unitId, setUnitId] = useState('');
   const [analytics, setAnalytics] = useState(null);
   const [adminTab, setAdminTab] = useState('overview');
+  const [pendingCount, setPendingCount] = useState(0);
+  const [weeklyEval, setWeeklyEval] = useState(null);
+  const [todayScoreStats, setTodayScoreStats] = useState(null);
+  const [employeeDashboard, setEmployeeDashboard] = useState(null);
 
-  const loadAnalytics = async () => {
+  const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+
+  const loadManagerDashboard = async () => {
     setLoading(true);
     setErrorText('');
     try {
-      const data = await dashboardService.getBehaviorAnalytics({
-        period,
-        unitId: unitId || undefined,
-      });
-      setAnalytics(data);
+      const todayKey = toDateKey(new Date());
+      const [analyticsData, pending, weekly, dailyScore] = await Promise.all([
+        dashboardService.getBehaviorAnalytics({
+          period,
+          unitId: unitId || undefined,
+        }),
+        evaluationService.getPendingList(),
+        evaluationService.getWeeklyAnalytics(),
+        managerDailyScoreService.getStatistics({
+          fromDate: todayKey,
+          toDate: todayKey,
+        }),
+      ]);
+      setAnalytics(analyticsData);
+      setPendingCount(Array.isArray(pending) ? pending.length : 0);
+      setWeeklyEval(weekly || null);
+      setTodayScoreStats(dailyScore?.totals || null);
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được dữ liệu dashboard');
     } finally {
@@ -44,12 +79,67 @@ const DashboardPage = () => {
     }
   };
 
+  const loadEmployeeDashboard = async () => {
+    setLoading(true);
+    setErrorText('');
+    try {
+      const todayKey = toDateKey(new Date());
+      const fromDate = daysAgoKey(29);
+      const [journals, logsToday] = await Promise.all([
+        journalService.getList({ fromDate, toDate: todayKey }),
+        journalService.getLogsHistory(null, todayKey).catch(() => ({})),
+      ]);
+      const list = Array.isArray(journals) ? journals : [];
+      const byDay = new Map(list.map((item) => [item.reportDate, item]));
+      const submittedDays = list.filter(
+        (item) => item.awarenessSubmittedAt || item.standardsSubmittedAt,
+      ).length;
+      const evaluatedDays = list.filter((item) => !!item.evaluation).length;
+      const todayJournal = byDay.get(todayKey);
+      const formStatusRows = [
+        { form: 'Mẫu 1: Nhận diện', submitted: !!todayJournal?.awarenessSubmittedAt },
+        { form: 'Mẫu 1: Giữ chuẩn', submitted: !!todayJournal?.standardsSubmittedAt },
+        { form: 'Mẫu 2: Hành vi', submitted: !!logsToday?.form2 },
+        { form: 'Mẫu 3: Thay đổi tư duy', submitted: !!logsToday?.form3 },
+        { form: 'Mẫu 4: Báo cáo bán hàng', submitted: Array.isArray(logsToday?.form4) && logsToday.form4.length > 0 },
+        { form: 'Mẫu 5: Ghi chép cuối ngày', submitted: !!logsToday?.form5 },
+        { form: 'Mẫu 8: Củng cố niềm tin', submitted: Array.isArray(logsToday?.form8) && logsToday.form8.length > 0 },
+      ];
+      const submittedTodayCount = formStatusRows.filter((item) => item.submitted).length;
+      const last7Days = Array.from({ length: 7 })
+        .map((_, index) => {
+          const day = daysAgoKey(6 - index);
+          const journal = byDay.get(day);
+          return {
+            day: day.slice(5),
+            daNop: journal?.awarenessSubmittedAt || journal?.standardsSubmittedAt ? 1 : 0,
+          };
+        });
+      setEmployeeDashboard({
+        submittedDays,
+        evaluatedDays,
+        submittedTodayCount,
+        formStatusRows,
+        last7Days,
+        form2ReviewStatus: logsToday?.form2?.status || 'CHƯA_NỘP',
+      });
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Không tải được dữ liệu dashboard nhân viên');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    loadAnalytics();
-  }, [period, unitId]);
+    if (isManagerOrAdmin) {
+      loadManagerDashboard();
+      return;
+    }
+    loadEmployeeDashboard();
+  }, [isManagerOrAdmin, period, unitId]);
 
   const exportExcel = () => {
-    if (!analytics) return;
+    if (!analytics || !isManagerOrAdmin) return;
     const rows = [
       ['Tổng nhân sự', analytics?.kpis?.totalEmployees ?? 0],
       ['% Tuân thủ kỷ luật', analytics?.kpis?.complianceRate ?? 0],
@@ -74,6 +164,87 @@ const DashboardPage = () => {
 
   const unitOptions = analytics?.unitOptions || [];
   const topReasons = useMemo(() => analytics?.topReasons || [], [analytics]);
+
+  if (!isManagerOrAdmin) {
+    return (
+      <div>
+        <div className="page-head">
+          <div>
+            <h2 style={{ margin: 0, color: '#0074ba' }}>Dashboard Nhân viên</h2>
+            <div className="page-subtitle">Theo dõi tiến độ nộp biểu mẫu hằng ngày</div>
+          </div>
+        </div>
+        {errorText ? <div className="status-err" style={{ marginBottom: 10 }}>{errorText}</div> : null}
+        {loading ? <div>Đang tải dữ liệu...</div> : null}
+        <div className="cards-grid" style={{ marginBottom: 12 }}>
+          <div className="card">
+            <div style={{ color: '#64748b' }}>Số ngày đã ghi nhận</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{employeeDashboard?.submittedDays || 0}</div>
+          </div>
+          <div className="card">
+            <div style={{ color: '#64748b' }}>Số ngày đã được đánh giá</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{employeeDashboard?.evaluatedDays || 0}</div>
+          </div>
+          <div className="card">
+            <div style={{ color: '#64748b' }}>Mẫu đã nộp hôm nay</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>
+              {employeeDashboard?.submittedTodayCount || 0}/7
+            </div>
+          </div>
+          <div className="card">
+            <div style={{ color: '#64748b' }}>Trạng thái thẩm định Mẫu 2</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>
+              {employeeDashboard?.form2ReviewStatus === 'APPROVED'
+                ? 'ĐẠT'
+                : employeeDashboard?.form2ReviewStatus === 'PENDING'
+                  ? 'CHỜ DUYỆT'
+                  : employeeDashboard?.form2ReviewStatus === 'REJECTED'
+                    ? 'CHƯA ĐẠT'
+                    : 'CHƯA NỘP'}
+            </div>
+          </div>
+        </div>
+        <div className="cards-grid" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
+          <div className="card">
+            <h3 style={{ marginTop: 0 }}>Mức độ nộp nhật ký 7 ngày gần nhất</h3>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={employeeDashboard?.last7Days || []}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis domain={[0, 1]} ticks={[0, 1]} />
+                <Tooltip />
+                <Bar dataKey="daNop" name="Đã nộp nhật ký" fill="#0074ba" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="card">
+            <h3 style={{ marginTop: 0 }}>Trạng thái biểu mẫu hôm nay</h3>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {(employeeDashboard?.formStatusRows || []).map((row) => (
+                <div
+                  key={row.form}
+                  style={{
+                    border: '1px solid #dbeafe',
+                    background: '#f8fbff',
+                    borderRadius: 10,
+                    padding: '8px 10px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                  }}
+                >
+                  <span>{row.form}</span>
+                  <strong style={{ color: row.submitted ? '#0f766e' : '#b45309' }}>
+                    {row.submitted ? 'Đã nộp' : 'Chưa nộp'}
+                  </strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -134,19 +305,23 @@ const DashboardPage = () => {
 
       <div className="cards-grid" style={{ marginBottom: 12 }}>
         <div className="card">
+          <div style={{ color: '#64748b' }}>Hồ sơ chờ thẩm định</div>
+          <div style={{ fontSize: 28, fontWeight: 800 }}>{pendingCount}</div>
+        </div>
+        <div className="card">
           <div style={{ color: '#64748b' }}>Tổng nhân sự</div>
           <div style={{ fontSize: 28, fontWeight: 800 }}>{analytics?.kpis?.totalEmployees || 0}</div>
         </div>
         <div className="card">
-          <div style={{ color: '#64748b' }}>% Tuân thủ kỷ luật</div>
+          <div style={{ color: '#64748b' }}>Tỷ lệ Hỏi sâu tuần này</div>
           <div style={{ fontSize: 28, fontWeight: 800 }}>
-            {analytics?.kpis?.complianceRate || 0}%
+            {weeklyEval?.deepInquiryRate || 0}%
           </div>
         </div>
         <div className="card">
-          <div style={{ color: '#64748b' }}>% Đạt chuẩn trung bình</div>
+          <div style={{ color: '#64748b' }}>Điểm TB chấm ngày hôm nay</div>
           <div style={{ fontSize: 28, fontWeight: 800 }}>
-            {analytics?.kpis?.averagePassRate || 0}%
+            {todayScoreStats?.averageScore || 0}
           </div>
         </div>
       </div>

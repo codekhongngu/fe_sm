@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import journalService from '../../../services/api/journalService';
 import JourneyTimelineStepper from '../components/v2/JourneyTimelineStepper';
 import Form2BehaviorChecklist from '../components/v2/Form2BehaviorChecklist';
+import Form38MindsetBelief from '../components/v2/Form38MindsetBelief';
+import Form4SalesReport from '../components/v2/Form4SalesReport';
+import Form5QuickNote from '../components/v2/Form5QuickNote';
+import Form8BeliefTransformations from '../components/v2/Form8BeliefTransformations';
 
 const toDateKey = (date) => {
   const y = date.getFullYear();
@@ -79,9 +83,37 @@ const Journey90Page = () => {
     deepInquiry: false,
     fullConsult: false,
     persistence: false,
+    // Mẫu 3, 8
+    form3OldMindset: '', form3NewMindset: '', form3ActionChange: '',
+    form8Rows: [{ situation: '', oldBelief: '', newChosenBelief: '', newBehavior: '', result: '' }],
+    // Mẫu 4
+    form4Rows: [{ customerName: '', customerIssue: '', consequence: '', solutionOffered: '', valueBasedPricing: '', result: '' }],
+    // Mẫu 5
+    form5Lesson: '', form5Action: '',
   });
   const [submitting, setSubmitting] = useState(false);
-  const [infoText, setInfoText] = useState('');
+  const [sharedForms, setSharedForms] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('sharedForms') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  const markFormShared = (formType) => {
+    const newShared = { ...sharedForms, [`${todayKey}_${formType}`]: true };
+    setSharedForms(newShared);
+    localStorage.setItem('sharedForms', JSON.stringify(newShared));
+  };
+
+  const isFormShared = (formType) => {
+    return !!sharedForms[`${todayKey}_${formType}`];
+  };
+
+  const getFormStatus = (formType, defaultStatus) => {
+    if (isFormShared(formType)) return 'APPROVED'; // Coi như khóa (read-only) nếu đã share
+    return defaultStatus;
+  };
 
   const loadJournals = async () => {
     setLoading(true);
@@ -115,6 +147,16 @@ const Journey90Page = () => {
   useEffect(() => {
     loadJournals();
   }, [fromDate, toDate, statusFilter]);
+
+  const [extraLogs, setExtraLogs] = useState({});
+
+  useEffect(() => {
+    if (selectedDateKey) {
+      journalService.getLogsHistory(null, selectedDateKey).then(res => {
+        setExtraLogs(res || {});
+      }).catch(e => console.error(e));
+    }
+  }, [selectedDateKey]);
 
   useEffect(() => {
     const run = async () => {
@@ -234,6 +276,65 @@ const Journey90Page = () => {
       })()
     : 'missed';
 
+  const availableForms = useMemo(() => {
+    return ['awareness', 'standards', 'behavior', 'form3', 'form4', 'form5', 'form8'];
+  }, []);
+
+  const [infoText, setInfoText] = useState('');
+
+  const submitGenericForm = async (formType, mappedPayload, successMsg, nextForm) => {
+    setErrorText('');
+    setInfoText('');
+    setSubmitting(true);
+    try {
+      await journalService.submitLog(formType, {
+        logDate: todayKey,
+        ...mappedPayload
+      });
+      await loadJournals();
+      setSelectedDateKey(todayKey);
+      
+      if (nextForm) {
+        setInfoText(`${successMsg}. Tiếp tục sang mẫu tiếp theo.`);
+        setActiveEform(nextForm);
+      } else {
+        setShowForm(false);
+        setInfoText(successMsg);
+        
+        setInfoText(
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+            <span>{successMsg}</span>
+            <button
+              className="btn outline"
+              style={{ padding: '6px 12px', fontSize: '13px' }}
+              onClick={() =>
+                handleShareTelegram(
+                  formType === 'FORM_2'
+                    ? 'behavior'
+                    : formType === 'FORM_3'
+                      ? 'form3'
+                      : formType === 'FORM_4'
+                        ? 'form4'
+                        : formType === 'FORM_5'
+                          ? 'form5'
+                          : 'form8',
+                  formType,
+                  formType,
+                )
+              }
+            >
+              Nhắn Telegram
+            </button>
+          </div>
+        );
+      }
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Nộp biểu mẫu thất bại');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const submitStandardsForm = async () => {
     setErrorText('');
     setInfoText('');
@@ -253,10 +354,19 @@ const Journey90Page = () => {
         backslideSigns: normalizeText(form.backslideSigns),
         solution: normalizeText(form.solution),
       });
-      setInfoText('Đã lưu nhật ký giữ chuẩn thu nhập cao thành công. Tiếp tục sang Mẫu 2: Checklist hành vi');
-      setActiveEform('behavior');
       await loadJournals();
       setSelectedDateKey(todayKey);
+      
+      const nextIndex = availableForms.indexOf('standards') + 1;
+      const nextForm = availableForms[nextIndex];
+      
+      if (nextForm) {
+        setInfoText('Đã lưu nhật ký giữ chuẩn thu nhập cao thành công. Tiếp tục biểu mẫu tiếp theo.');
+        setActiveEform(nextForm);
+      } else {
+        setShowForm(false);
+        setInfoText('Đã lưu nhật ký giữ chuẩn thu nhập cao thành công');
+      }
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Nộp nhật ký thất bại');
     } finally {
@@ -265,53 +375,95 @@ const Journey90Page = () => {
   };
 
   const submitBehaviorForm = async (payload) => {
-    setErrorText('');
-    setInfoText('');
-    setSubmitting(true);
+    const nextIndex = availableForms.indexOf('behavior') + 1;
+    const nextForm = availableForms[nextIndex];
+    const mapped = {
+      customerMetCount: Number(payload.customersMet),
+      askedDeepQuestion: payload.deepInquiry,
+      fullConsultation: payload.fullConsult,
+      followedThrough: payload.persistence
+    };
+    await submitGenericForm('FORM_2', mapped, 'Đã lưu Mẫu 2: Hành vi', nextForm);
+    setForm(prev => ({
+      ...prev,
+      customersMet: payload.customersMet,
+      deepInquiry: payload.deepInquiry,
+      fullConsult: payload.fullConsult,
+      persistence: payload.persistence
+    }));
+  };
+
+  const submitForm3 = async (payload) => {
+    const nextIndex = availableForms.indexOf('form3') + 1;
+    const nextForm = availableForms[nextIndex];
+    const mapped = {
+      negativeThought: payload.oldMindset,
+      newMindset: payload.newMindset,
+      behaviorChange: payload.actionChange
+    };
+    await submitGenericForm('FORM_3', mapped, 'Đã lưu Mẫu 3: Thay đổi Tư duy', nextForm);
+    setForm(prev => ({
+      ...prev,
+      form3OldMindset: payload.oldMindset,
+      form3NewMindset: payload.newMindset,
+      form3ActionChange: payload.actionChange
+    }));
+  };
+
+  const submitForm4 = async (payload) => {
+    const nextIndex = availableForms.indexOf('form4') + 1;
+    const nextForm = availableForms[nextIndex];
+    const mapped = {
+      salesActivities: payload.salesActivities || []
+    };
+    await submitGenericForm('FORM_4', mapped, 'Đã lưu Mẫu 4: Báo cáo bán hàng', nextForm);
+    setForm(prev => ({
+      ...prev,
+      form4Rows: payload.salesActivities || []
+    }));
+  };
+
+  const submitForm5 = async (payload) => {
+    const nextIndex = availableForms.indexOf('form5') + 1;
+    const nextForm = availableForms[nextIndex];
+    const mapped = {
+      tomorrowLesson: payload.lessonLearned,
+      differentAction: payload.actionPlan
+    };
+    await submitGenericForm('FORM_5', mapped, 'Đã lưu Mẫu 5: Ghi chép cuối ngày', nextForm);
+    setForm(prev => ({
+      ...prev,
+      form5Lesson: payload.lessonLearned,
+      form5Action: payload.actionPlan
+    }));
+  };
+
+  const submitForm8 = async (payload) => {
+    const nextIndex = availableForms.indexOf('form8') + 1;
+    const nextForm = availableForms[nextIndex];
+    const mapped = {
+      beliefTransformations: payload.beliefTransformations || []
+    };
+    await submitGenericForm('FORM_8', mapped, 'Đã lưu Mẫu 8: Củng cố niềm tin', nextForm);
+    setForm(prev => ({
+      ...prev,
+      form8Rows: payload.beliefTransformations || []
+    }));
+  };
+
+  const handleShareTelegram = async (shareKey, formType, formName, formPart) => {
     try {
-      await journalService.submitBehavior({
-        reportDate: todayKey,
-        ...payload
-      });
-      setShowForm(false);
-      setActiveEform('awareness');
-      setForm(prev => ({
-        ...prev,
-        avoidance: '',
-        selfLimit: '',
-        earlyStop: '',
-        blaming: '',
-        standardsKeptText: '',
-        backslideSigns: '',
-        solution: '',
-        customersMet: '',
-        deepInquiry: false,
-        fullConsult: false,
-        persistence: false,
-      }));
-      await loadJournals();
-      setSelectedDateKey(todayKey);
-      setInfoText('Đã lưu Mẫu 2: Checklist Hành vi thành công');
-
-      // Tạo Telegram Share link
-      const employeeName = JSON.parse(localStorage.getItem('user'))?.fullName || 'Nhân viên';
       const detailUrl = `${window.location.origin}/discipline/manager-review/${journalsByDate[todayKey]?.id || ''}`;
-      const msg = `[NHẬT KÝ 90 NGÀY]\nNhân viên: ${employeeName}\nNgày nộp: ${todayKey}\n\nĐã nộp đầy đủ Nhật ký Mẫu 1 và Mẫu 2.\nQuản lý vui lòng xem và đánh giá tại:\n${detailUrl}`;
-      const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(detailUrl)}&text=${encodeURIComponent(msg)}`;
-      
-      setInfoText(
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-          <span>Đã lưu Mẫu 2: Checklist Hành vi thành công</span>
-          <a href={telegramShareUrl} target="_blank" rel="noreferrer" className="btn" style={{ padding: '6px 12px', fontSize: '13px' }}>
-            Nhắn Telegram
-          </a>
-        </div>
-      );
-
+      await journalService.shareTelegram({
+        formType,
+        formPart,
+        logDate: todayKey,
+        detailUrl
+      });
+      markFormShared(shareKey);
+      setInfoText(`Đã gửi thông báo Telegram cho ${formName} thành công và khóa form.`);
     } catch (error) {
-      setErrorText(error?.response?.data?.message || 'Nộp Checklist Hành vi thất bại');
-    } finally {
-      setSubmitting(false);
+      setErrorText(error?.response?.data?.message || 'Gửi thông báo Telegram thất bại. Vui lòng kiểm tra cấu hình Bot của đơn vị.');
     }
   };
 
@@ -321,11 +473,14 @@ const Journey90Page = () => {
     setInfoText('');
     setErrorText('');
     const todayJournal = journalsByDate[todayKey];
-    if (!todayJournal?.id) {
-      return;
-    }
+    
     try {
-      const detail = await journalService.getById(todayJournal.id);
+      let detail = {};
+      if (todayJournal?.id) {
+        detail = await journalService.getById(todayJournal.id).catch(() => ({}));
+      }
+      const extraLogsData = await journalService.getLogsHistory(null, todayKey).catch(() => ({}));
+      
       setForm({
         avoidance: normalizeText(detail?.avoidance),
         selfLimit: normalizeText(detail?.selfLimit),
@@ -334,10 +489,34 @@ const Journey90Page = () => {
         standardsKeptText: normalizeText(detail?.standardsKeptText),
         backslideSigns: normalizeText(detail?.backslideSigns),
         solution: normalizeText(detail?.solution),
-        customersMet: detail?.customersMet || '',
-        deepInquiry: !!detail?.deepInquiry,
-        fullConsult: !!detail?.fullConsult,
-        persistence: !!detail?.persistence,
+        customersMet: extraLogsData?.form2?.customerMetCount ?? detail?.customersMet ?? '',
+        deepInquiry: extraLogsData?.form2?.askedDeepQuestion ?? !!detail?.deepInquiry,
+        fullConsult: extraLogsData?.form2?.fullConsultation ?? !!detail?.fullConsult,
+        persistence: extraLogsData?.form2?.followedThrough ?? !!detail?.persistence,
+        form3OldMindset: extraLogsData?.form3?.negativeThought || '',
+        form3NewMindset: extraLogsData?.form3?.newMindset || '',
+        form3ActionChange: extraLogsData?.form3?.behaviorChange || '',
+        form4Rows: Array.isArray(extraLogsData?.form4) && extraLogsData.form4.length > 0
+          ? extraLogsData.form4.map((item) => ({
+              customerName: item.customerName || '',
+              customerIssue: item.customerIssue || '',
+              consequence: item.consequence || '',
+              solutionOffered: item.solutionOffered || '',
+              valueBasedPricing: item.valueBasedPricing || '',
+              result: item.result || '',
+            }))
+          : [{ customerName: '', customerIssue: '', consequence: '', solutionOffered: '', valueBasedPricing: '', result: '' }],
+        form5Lesson: extraLogsData?.form5?.tomorrowLesson || '',
+        form5Action: extraLogsData?.form5?.differentAction || '',
+        form8Rows: Array.isArray(extraLogsData?.form8) && extraLogsData.form8.length > 0
+          ? extraLogsData.form8.map((item) => ({
+              situation: item.situation || '',
+              oldBelief: item.oldBelief || '',
+              newChosenBelief: item.newChosenBelief || '',
+              newBehavior: item.newBehavior || '',
+              result: item.result || '',
+            }))
+          : [{ situation: '', oldBelief: '', newChosenBelief: '', newBehavior: '', result: '' }],
       });
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được dữ liệu hôm nay');
@@ -406,25 +585,63 @@ const Journey90Page = () => {
                 </button>
               </div>
 
-              <div className="journey-eform-tabs">
-                <button
-                  className={`journey-eform-tab ${activeEform === 'awareness' ? 'active' : ''}`}
-                  onClick={() => setActiveEform('awareness')}
-                >
-                  Mẫu 1: Nhận diện
-                </button>
-                <button
-                  className={`journey-eform-tab ${activeEform === 'standards' ? 'active' : ''}`}
-                  onClick={() => setActiveEform('standards')}
-                >
-                  Mẫu 1: Giữ chuẩn
-                </button>
-                <button
-                  className={`journey-eform-tab ${activeEform === 'behavior' ? 'active' : ''}`}
-                  onClick={() => setActiveEform('behavior')}
-                >
-                  Mẫu 2: Hành vi
-                </button>
+              <div className="journey-eform-tabs" style={{ flexWrap: 'wrap', gap: '8px', paddingBottom: '8px' }}>
+                {availableForms.includes('awareness') && (
+                  <button
+                    className={`journey-eform-tab ${activeEform === 'awareness' ? 'active' : ''}`}
+                    onClick={() => setActiveEform('awareness')}
+                  >
+                    Mẫu 1: Nhận diện
+                  </button>
+                )}
+                {/* {availableForms.includes('standards') && (
+                  <button
+                    className={`journey-eform-tab ${activeEform === 'standards' ? 'active' : ''}`}
+                    onClick={() => setActiveEform('standards')}
+                  >
+                    Mẫu 1: Giữ chuẩn
+                  </button>
+                )} */}
+                {availableForms.includes('behavior') && (
+                  <button
+                    className={`journey-eform-tab ${activeEform === 'behavior' ? 'active' : ''}`}
+                    onClick={() => setActiveEform('behavior')}
+                  >
+                    Mẫu 2: Hành vi
+                  </button>
+                )}
+                {availableForms.includes('form3') && (
+                  <button
+                    className={`journey-eform-tab ${activeEform === 'form3' ? 'active' : ''}`}
+                    onClick={() => setActiveEform('form3')}
+                  >
+                    Mẫu 3: Thay đổi Tư duy
+                  </button>
+                )}
+                {availableForms.includes('form4') && (
+                  <button
+                    className={`journey-eform-tab ${activeEform === 'form4' ? 'active' : ''}`}
+                    onClick={() => setActiveEform('form4')}
+                  >
+                    Mẫu 4: Báo cáo Bán hàng
+                  </button>
+                )}
+                {availableForms.includes('form5') && (
+                  <button
+                    className={`journey-eform-tab ${activeEform === 'form5' ? 'active' : ''}`}
+                    onClick={() => setActiveEform('form5')}
+                  >
+                    Mẫu 5: Ghi chép cuối ngày
+                  </button>
+                )}
+                {availableForms.includes('form8') && (
+                  <button
+                    className={`journey-eform-tab ${activeEform === 'form8' ? 'active' : ''}`}
+                    onClick={() => setActiveEform('form8')}
+                  >
+                    Mẫu 8: Củng cố niềm tin
+                  </button>
+                )}
               </div>
 
               {activeEform === 'awareness' ? (
@@ -549,7 +766,7 @@ const Journey90Page = () => {
                     />
                   </div>
                 </div>
-              ) : (
+              ) : activeEform === 'behavior' ? (
                 <div style={{ marginTop: '20px' }}>
                   <Form2BehaviorChecklist
                     userRole="EMPLOYEE"
@@ -558,27 +775,159 @@ const Journey90Page = () => {
                       deepInquiry: form.deepInquiry,
                       fullConsult: form.fullConsult,
                       persistence: form.persistence,
-                      status: todayJournal?.evaluation ? 'APPROVED' : 'PENDING'
+                      status: getFormStatus('behavior', todayJournal?.evaluation ? 'APPROVED' : 'PENDING')
                     }}
                     onSubmit={submitBehaviorForm}
                     isSubmitting={submitting}
                   />
+                  <div className="journey-eform-actions" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+                    <button
+                      className="btn outline"
+                      onClick={() => handleShareTelegram('behavior', 'FORM_2', 'Mẫu 2: Hành vi')}
+                    >
+                      Nhắn Telegram
+                    </button>
+                  </div>
                 </div>
-              )}
+              ) : activeEform === 'form3' ? (
+                <div style={{ marginTop: '20px' }}>
+                  <Form38MindsetBelief
+                    title="Mẫu 3: Thay đổi Tư duy"
+                    userRole="EMPLOYEE"
+                    initialData={{
+                      oldMindset: form.form3OldMindset,
+                      newMindset: form.form3NewMindset,
+                      actionChange: form.form3ActionChange,
+                      status: getFormStatus('form3', todayJournal?.evaluation ? 'APPROVED' : 'PENDING')
+                    }}
+                    onSubmit={submitForm3}
+                    isSubmitting={submitting}
+                  />
+                  <div className="journey-eform-actions" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+                    <button
+                      className="btn outline"
+                      onClick={() => handleShareTelegram('form3', 'FORM_3', 'Mẫu 3: Thay đổi Tư duy')}
+                    >
+                      Nhắn Telegram
+                    </button>
+                  </div>
+                </div>
+              ) : activeEform === 'form4' ? (
+                <div style={{ marginTop: '20px' }}>
+                  <Form4SalesReport
+                    userRole="EMPLOYEE"
+                    initialData={{
+                      salesActivities: form.form4Rows,
+                      status: getFormStatus('form4', todayJournal?.evaluation ? 'APPROVED' : 'PENDING')
+                    }}
+                    onSubmit={submitForm4}
+                    isSubmitting={submitting}
+                  />
+                  <div className="journey-eform-actions" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+                    <button
+                      className="btn outline"
+                      onClick={() => handleShareTelegram('form4', 'FORM_4', 'Mẫu 4: Báo cáo Bán hàng')}
+                    >
+                      Nhắn Telegram
+                    </button>
+                  </div>
+                </div>
+              ) : activeEform === 'form5' ? (
+                <div style={{ marginTop: '20px' }}>
+                  <Form5QuickNote
+                    userRole="EMPLOYEE"
+                    initialData={{
+                      lessonLearned: form.form5Lesson,
+                      actionPlan: form.form5Action,
+                      status: getFormStatus('form5', todayJournal?.evaluation ? 'APPROVED' : 'PENDING')
+                    }}
+                    onSubmit={submitForm5}
+                    isSubmitting={submitting}
+                  />
+                  <div className="journey-eform-actions" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+                    <button
+                      className="btn outline"
+                      onClick={() => handleShareTelegram('form5', 'FORM_5', 'Mẫu 5: Ghi chép cuối ngày')}
+                    >
+                      Nhắn Telegram
+                    </button>
+                  </div>
+                </div>
+              ) : activeEform === 'form8' ? (
+                <div style={{ marginTop: '20px' }}>
+                  <Form8BeliefTransformations
+                    userRole="EMPLOYEE"
+                    initialData={{
+                      beliefTransformations: form.form8Rows,
+                      status: getFormStatus('form8', todayJournal?.evaluation ? 'APPROVED' : 'PENDING')
+                    }}
+                    onSubmit={submitForm8}
+                    isSubmitting={submitting}
+                  />
+                  <div className="journey-eform-actions" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+                    <button
+                      className="btn outline"
+                      onClick={() => handleShareTelegram('form8', 'FORM_8', 'Mẫu 8: Củng cố Niềm tin')}
+                    >
+                      Nhắn Telegram
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
-              {activeEform !== 'behavior' && (
-                <div className="journey-eform-actions">
+              {['awareness', 'standards'].includes(activeEform) && (
+                <div className="journey-eform-actions" style={{ flexWrap: 'wrap' }}>
                   <button className="btn outline" onClick={() => setShowForm(false)}>
                     Đóng
                   </button>
+                  
                   {activeEform === 'awareness' ? (
-                    <button className="btn" onClick={saveAwarenessStep}>
-                      Lưu E-form Nhận diện
-                    </button>
+                    <>
+                      <button 
+                        className="btn" 
+                        onClick={saveAwarenessStep}
+                        disabled={getFormStatus('awareness', 'PENDING') === 'APPROVED'}
+                      >
+                        Lưu E-form Nhận diện
+                      </button>
+                      <button
+                        className="btn outline"
+                        onClick={() =>
+                          handleShareTelegram(
+                            'awareness',
+                            'FORM_1',
+                            'Mẫu 1: Nhận diện',
+                            'awareness',
+                          )
+                        }
+                      >
+                        Nhắn Telegram
+                      </button>
+                    </>
                   ) : (
-                    <button className="btn" disabled={submitting} onClick={submitStandardsForm}>
-                      Lưu E-form Giữ chuẩn & Cam kết kỷ luật
-                    </button>
+                    <>
+                      <button 
+                        className="btn" 
+                        disabled={submitting || getFormStatus('standards', 'PENDING') === 'APPROVED'} 
+                        onClick={submitStandardsForm}
+                      >
+                        Lưu E-form Giữ chuẩn
+                      </button>
+                      <button
+                        className="btn outline"
+                        disabled={submitting || getFormStatus('standards', 'PENDING') === 'APPROVED'}
+                        onClick={() =>
+                          handleShareTelegram(
+                            'standards',
+                            'FORM_1',
+                            'Mẫu 1: Giữ chuẩn',
+                            'standards',
+                          )
+                        }
+                      >
+                        Nhắn Telegram
+                      </button>
+                    </>
                   )}
                 </div>
               )}
@@ -730,74 +1079,126 @@ const Journey90Page = () => {
             </span>
           </div>
 
-          {selectedJournal ? (
+          {selectedJournal || extraLogs?.form2 || extraLogs?.form3 || extraLogs?.form4 || extraLogs?.form5 || extraLogs?.form8 ? (
             <div className="journey-compare">
               <div className="journey-column">
                 <h4>Nhật ký nhận diện hằng ngày</h4>
                 <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
-                  <li>Hôm nay tôi đã né điều gì: {formatDisplayText(selectedJournal.avoidance)}</li>
-                  <li>Tôi có tự loại gói nào không: {formatDisplayText(selectedJournal.selfLimit)}</li>
-                  <li>Tôi đã dừng tư vấn sớm ở điểm nào: {formatDisplayText(selectedJournal.earlyStop)}</li>
-                  <li>Khi không bán được dịch vụ anh chị thường đỗ lỗi cho vấn đề gì: {formatDisplayText(selectedJournal.blaming)}</li>
+                  <li>Hôm nay tôi đã né điều gì: {formatDisplayText(selectedJournal?.avoidance)}</li>
+                  <li>Tôi có tự loại gói nào không: {formatDisplayText(selectedJournal?.selfLimit)}</li>
+                  <li>Tôi đã dừng tư vấn sớm ở điểm nào: {formatDisplayText(selectedJournal?.earlyStop)}</li>
+                  <li>Khi không bán được dịch vụ anh chị thường đỗ lỗi cho vấn đề gì: {formatDisplayText(selectedJournal?.blaming)}</li>
                 </ul>
-                <div style={{ marginTop: 14 }}>
+                {/* <div style={{ marginTop: 14 }}>
                   <strong>Nhật ký giữ chuẩn thu nhập cao</strong>
                   <strong>Hôm nay tôi giữ được chuẩn nào</strong>
                   <div style={{ marginTop: 6, fontSize: 13 }}>
-                    {formatDisplayText(selectedJournal.standardsKeptText, 'Chưa ghi nhận')}
+                    {formatDisplayText(selectedJournal?.standardsKeptText, 'Chưa ghi nhận')}
                   </div>
                 </div>
                 <div style={{ marginTop: 14 }}>
                   <strong>Dấu hiệu tụt chuẩn nào xuất hiện</strong>
                   <div style={{ marginTop: 6, fontSize: 13 }}>
-                    {formatDisplayText(selectedJournal.backslideSigns, 'Chưa ghi nhận')}
+                    {formatDisplayText(selectedJournal?.backslideSigns, 'Chưa ghi nhận')}
                   </div>
                 </div>
                 <div style={{ marginTop: 14 }}>
                   <strong>Tôi đã xử lý nó ra sao</strong>
                   <div style={{ marginTop: 6, fontSize: 13 }}>
-                    {formatDisplayText(selectedJournal.solution, 'Chưa ghi nhận')}
+                    {formatDisplayText(selectedJournal?.solution, 'Chưa ghi nhận')}
                   </div>
-                </div>
+                </div> */}
+
+                {extraLogs?.form3 && (
+                  <div style={{ marginTop: 14 }}>
+                    <strong>Mẫu 3: Thay đổi Tư duy</strong>
+                    <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
+                      <li>Suy nghĩ tiêu cực: {formatDisplayText(extraLogs.form3.negativeThought)}</li>
+                      <li>Tư duy mới: {formatDisplayText(extraLogs.form3.newMindset)}</li>
+                      <li>Hành vi thay đổi: {formatDisplayText(extraLogs.form3.behaviorChange)}</li>
+                    </ul>
+                  </div>
+                )}
+
+                {Array.isArray(extraLogs?.form4) && extraLogs.form4.length > 0 && (
+                  <div style={{ marginTop: 14 }}>
+                    <strong>Mẫu 4: Báo cáo Bán hàng</strong>
+                    {extraLogs.form4.map((item, idx) => (
+                      <ul key={`f4-${idx}`} style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
+                        <li>Dòng {idx + 1} - Tên KH: {formatDisplayText(item.customerName)}</li>
+                        <li>Vấn đề: {formatDisplayText(item.customerIssue)}</li>
+                        <li>Hệ quả: {formatDisplayText(item.consequence)}</li>
+                        <li>Giải pháp: {formatDisplayText(item.solutionOffered)}</li>
+                        <li>Giá trị: {formatDisplayText(item.valueBasedPricing)}</li>
+                        <li>Kết quả: {formatDisplayText(item.result)}</li>
+                      </ul>
+                    ))}
+                  </div>
+                )}
+
+                {extraLogs?.form5 && (
+                  <div style={{ marginTop: 14 }}>
+                    <strong>Mẫu 5: Ghi chép cuối ngày</strong>
+                    <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
+                      <li>Bài học: {formatDisplayText(extraLogs.form5.tomorrowLesson)}</li>
+                      <li>Hành động mới: {formatDisplayText(extraLogs.form5.differentAction)}</li>
+                    </ul>
+                  </div>
+                )}
+
+                {Array.isArray(extraLogs?.form8) && extraLogs.form8.length > 0 && (
+                  <div style={{ marginTop: 14 }}>
+                    <strong>Mẫu 8: Củng cố niềm tin</strong>
+                    {extraLogs.form8.map((item, idx) => (
+                      <ul key={`f8-${idx}`} style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
+                        <li>Dòng {idx + 1} - Tình huống: {formatDisplayText(item.situation)}</li>
+                        <li>Niềm tin cũ: {formatDisplayText(item.oldBelief)}</li>
+                        <li>Niềm tin mới: {formatDisplayText(item.newChosenBelief)}</li>
+                        <li>Hành vi mới: {formatDisplayText(item.newBehavior)}</li>
+                        <li>Kết quả: {formatDisplayText(item.result)}</li>
+                      </ul>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="journey-column">
                 <h4>Quản lý đánh giá</h4>
-                {selectedJournal.evaluation ? (
+                {selectedJournal?.evaluation ? (
                   <>
                     <div style={{ fontWeight: 700, marginBottom: 6, color: '#0f172a', fontSize: 12 }}>E-form Nhận diện</div>
                     <div className="rating-row">
                       <span>Hỏi sâu hơn</span>
                       <span>
-                        {selectedJournal.evaluation?.awarenessDeepInquiryStatus
+                        {selectedJournal?.evaluation?.awarenessDeepInquiryStatus
                           ? 'Đã thực hiện'
                           : 'Chưa thực hiện'}
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
-                      Ghi chú: {selectedJournal.evaluation?.awarenessDeepInquiryNote || 'Không có'}
+                      Ghi chú: {selectedJournal?.evaluation?.awarenessDeepInquiryNote || 'Không có'}
                     </div>
                     <div className="rating-row">
                       <span>Đề xuất đầy đủ</span>
                       <span>
-                        {selectedJournal.evaluation?.awarenessFullProposalStatus
+                        {selectedJournal?.evaluation?.awarenessFullProposalStatus
                           ? 'Đã thực hiện'
                           : 'Chưa thực hiện'}
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
-                      Ghi chú: {selectedJournal.evaluation?.awarenessFullProposalNote || 'Không có'}
+                      Ghi chú: {selectedJournal?.evaluation?.awarenessFullProposalNote || 'Không có'}
                     </div>
                     <div className="rating-row">
                       <span>Theo đến quyết</span>
                       <span>
-                        {selectedJournal.evaluation?.awarenessPersistenceStatus
+                        {selectedJournal?.evaluation?.awarenessPersistenceStatus
                           ? 'Đã thực hiện'
                           : 'Chưa thực hiện'}
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
-                      Ghi chú: {selectedJournal.evaluation?.awarenessPersistenceNote || 'Không có'}
+                      Ghi chú: {selectedJournal?.evaluation?.awarenessPersistenceNote || 'Không có'}
                     </div>
 
                     <div style={{ height: 1, background: '#e2e8f0', margin: '10px 0' }} />
@@ -805,52 +1206,93 @@ const Journey90Page = () => {
                     <div className="rating-row">
                       <span>Hỏi sâu</span>
                       <span>
-                        {selectedJournal.evaluation?.deepInquiryStatus
+                        {selectedJournal?.evaluation?.deepInquiryStatus
                           ? 'Đã thực hiện'
                           : 'Chưa thực hiện'}
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
-                      Ghi chú: {selectedJournal.evaluation?.deepInquiryNote || 'Không có'}
+                      Ghi chú: {selectedJournal?.evaluation?.deepInquiryNote || 'Không có'}
                     </div>
                     <div className="rating-row">
                       <span>Tư vấn đủ</span>
                       <span>
-                        {selectedJournal.evaluation?.fullProposalStatus
+                        {selectedJournal?.evaluation?.fullProposalStatus
                           ? 'Đã thực hiện'
                           : 'Chưa thực hiện'}
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
-                      Ghi chú: {selectedJournal.evaluation?.fullProposalNote || 'Không có'}
+                      Ghi chú: {selectedJournal?.evaluation?.fullProposalNote || 'Không có'}
                     </div>
                     <div className="rating-row">
                       <span>Theo đến cùng</span>
                       <span>
-                        {selectedJournal.evaluation?.persistenceStatus
+                        {selectedJournal?.evaluation?.persistenceStatus
                           ? 'Đã thực hiện'
                           : 'Chưa thực hiện'}
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
-                      Ghi chú: {selectedJournal.evaluation?.persistenceNote || 'Không có'}
+                      Ghi chú: {selectedJournal?.evaluation?.persistenceNote || 'Không có'}
                     </div>
                     <div className="coach-bubble">
                       <div style={{ fontWeight: 700, marginBottom: 6 }}>
-                        {selectedJournal.evaluation?.manager?.fullName || 'Quản lý'}
+                        {selectedJournal?.evaluation?.manager?.fullName || 'Quản lý'}
                       </div>
                       <div>
                         Nhận diện (tổng kết):{' '}
-                        {selectedJournal.evaluation?.awarenessManagerNote || 'Không có'}
+                        {selectedJournal?.evaluation?.awarenessManagerNote || 'Không có'}
                       </div>
                       <div style={{ marginTop: 6 }}>
                         Giữ chuẩn (tổng kết):{' '}
-                        {selectedJournal.evaluation?.standardsManagerNote || 'Không có'}
+                        {selectedJournal?.evaluation?.standardsManagerNote || 'Không có'}
                       </div>
                     </div>
                   </>
                 ) : (
-                  <div className="coach-bubble">Quản lý chưa chấm điểm cho ngày này.</div>
+                  <div className="coach-bubble">Quản lý chưa chấm điểm (Mẫu 1) cho ngày này.</div>
+                )}
+
+                {extraLogs?.form2 && (
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ height: 1, background: '#e2e8f0', margin: '10px 0' }} />
+                    <div style={{ fontWeight: 700, marginBottom: 6, color: '#0f172a', fontSize: 12 }}>Mẫu 2: Hành vi</div>
+                    <div className="rating-row">
+                      <span>Số khách gặp</span>
+                      <span>{extraLogs.form2.customerMetCount || 0}</span>
+                    </div>
+                    <div className="rating-row">
+                      <span>Hỏi sâu</span>
+                      <span>
+                        {extraLogs.form2.mgrEvalDeepQ === true
+                          ? 'Đạt'
+                          : extraLogs.form2.mgrEvalDeepQ === false
+                            ? 'Chưa đạt'
+                            : 'Chưa chấm'}
+                      </span>
+                    </div>
+                    <div className="rating-row">
+                      <span>Tư vấn đủ</span>
+                      <span>
+                        {extraLogs.form2.mgrEvalFullCons === true
+                          ? 'Đạt'
+                          : extraLogs.form2.mgrEvalFullCons === false
+                            ? 'Chưa đạt'
+                            : 'Chưa chấm'}
+                      </span>
+                    </div>
+                    <div className="rating-row">
+                      <span>Theo đến cùng</span>
+                      <span>
+                        {extraLogs.form2.mgrEvalFollow === true
+                          ? 'Đạt'
+                          : extraLogs.form2.mgrEvalFollow === false
+                            ? 'Chưa đạt'
+                            : 'Chưa chấm'}
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import behaviorAdminService from '../../../../services/api/behaviorAdminService';
 import userService from '../../../../services/api/userService';
 
 const UserManagementPage = () => {
@@ -28,10 +29,20 @@ const UserManagementPage = () => {
   const [editUserRole, setEditUserRole] = useState('EMPLOYEE');
   const [editUserUnitId, setEditUserUnitId] = useState('');
   const [editTelegramChatId, setEditTelegramChatId] = useState('');
+  const [weeklyConfigs, setWeeklyConfigs] = useState([]);
+  const [editingWeekId, setEditingWeekId] = useState('');
+  const [weekName, setWeekName] = useState('');
+  const [weekStartDate, setWeekStartDate] = useState('');
+  const [weekEndDate, setWeekEndDate] = useState('');
 
   const loadUnits = async () => {
     const data = await userService.getUnits();
     setUnits(Array.isArray(data) ? data : []);
+  };
+
+  const loadWeeklyConfigs = async () => {
+    const data = await behaviorAdminService.getWeeklyConfigs();
+    setWeeklyConfigs(Array.isArray(data) ? data : []);
   };
 
   const loadData = async () => {
@@ -40,7 +51,7 @@ const UserManagementPage = () => {
     try {
       const data = await userService.getList();
       setUsers(Array.isArray(data) ? data : []);
-      await loadUnits();
+      await Promise.all([loadUnits(), loadWeeklyConfigs()]);
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được cấu hình người dùng/đơn vị');
     } finally {
@@ -247,6 +258,94 @@ const UserManagementPage = () => {
     }
   };
 
+  const createWeeklyConfig = async () => {
+    setStatus('');
+    setErrorText('');
+    if (!weekName || !weekStartDate || !weekEndDate) {
+      setErrorText('Vui lòng nhập đủ tên tuần, ngày bắt đầu và ngày kết thúc');
+      return;
+    }
+    try {
+      await behaviorAdminService.createWeeklyConfig({
+        weekName,
+        startDate: weekStartDate,
+        endDate: weekEndDate,
+      });
+      setWeekName('');
+      setWeekStartDate('');
+      setWeekEndDate('');
+      setStatus('Tạo cấu hình tuần thành công');
+      await loadWeeklyConfigs();
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Tạo cấu hình tuần thất bại');
+    }
+  };
+
+  const downloadImportTemplate = async () => {
+    setStatus('');
+    setErrorText('');
+    try {
+      const blob = await userService.downloadImportTemplate();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'user-import-template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatus('Đã tải mẫu import Excel');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Không tải được mẫu import');
+    }
+  };
+
+  const startEditWeeklyConfig = (week) => {
+    setEditingWeekId(week.id);
+    setWeekName(week.weekName || '');
+    setWeekStartDate(week.startDate || '');
+    setWeekEndDate(week.endDate || '');
+  };
+
+  const saveEditWeeklyConfig = async () => {
+    setStatus('');
+    setErrorText('');
+    if (!editingWeekId) {
+      return;
+    }
+    if (!weekName || !weekStartDate || !weekEndDate) {
+      setErrorText('Vui lòng nhập đủ tên tuần, ngày bắt đầu và ngày kết thúc');
+      return;
+    }
+    try {
+      await behaviorAdminService.updateWeeklyConfig(editingWeekId, {
+        weekName,
+        startDate: weekStartDate,
+        endDate: weekEndDate,
+      });
+      setEditingWeekId('');
+      setWeekName('');
+      setWeekStartDate('');
+      setWeekEndDate('');
+      setStatus('Cập nhật cấu hình tuần thành công');
+      await loadWeeklyConfigs();
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Cập nhật cấu hình tuần thất bại');
+    }
+  };
+
+  const deleteWeeklyConfig = async (id) => {
+    setStatus('');
+    setErrorText('');
+    try {
+      await behaviorAdminService.deleteWeeklyConfig(id);
+      setStatus('Xóa cấu hình tuần thành công');
+      await loadWeeklyConfigs();
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xóa cấu hình tuần thất bại');
+    }
+  };
+
   const filteredUsers = users.filter((user) => {
     const text = `${user.fullName} ${user.username}`.toLowerCase();
     const matchSearch = !search || text.includes(search.toLowerCase());
@@ -273,6 +372,12 @@ const UserManagementPage = () => {
             onClick={() => setViewMode('units')}
           >
             Đơn vị
+          </button>
+          <button
+            className={`btn ${viewMode === 'weeks' ? '' : 'outline'}`}
+            onClick={() => setViewMode('weeks')}
+          >
+            Cấu hình tuần
           </button>
         </div>
       </div>
@@ -336,6 +441,9 @@ const UserManagementPage = () => {
               <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
               <button className="btn outline" onClick={importExcel}>
                 Import Excel
+              </button>
+              <button className="btn outline" onClick={downloadImportTemplate}>
+                Tải mẫu import
               </button>
             </div>
           </div>
@@ -488,7 +596,7 @@ const UserManagementPage = () => {
             </table>
           </div>
         </>
-      ) : (
+      ) : viewMode === 'units' ? (
         <>
           <div className="card" style={{ marginBottom: 12 }}>
             <h3 style={{ marginTop: 0 }}>Cấu hình đơn vị</h3>
@@ -569,6 +677,82 @@ const UserManagementPage = () => {
                         Sửa
                       </button>
                       <button className="btn danger" onClick={() => deleteUnit(unit.id)}>
+                        Xóa
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="card" style={{ marginBottom: 12 }}>
+            <h3 style={{ marginTop: 0 }}>Cấu hình tuần</h3>
+            <div style={{ display: 'grid', gap: 8, maxWidth: 520 }}>
+              <input
+                className="field"
+                placeholder="Tên tuần (VD: Tuần 15/2026)"
+                value={weekName}
+                onChange={(e) => setWeekName(e.target.value)}
+              />
+              <input
+                className="field"
+                type="date"
+                value={weekStartDate}
+                onChange={(e) => setWeekStartDate(e.target.value)}
+              />
+              <input
+                className="field"
+                type="date"
+                value={weekEndDate}
+                onChange={(e) => setWeekEndDate(e.target.value)}
+              />
+              <button className="btn" onClick={editingWeekId ? saveEditWeeklyConfig : createWeeklyConfig}>
+                {editingWeekId ? 'Cập nhật tuần' : 'Tạo tuần'}
+              </button>
+              {editingWeekId ? (
+                <button
+                  className="btn outline"
+                  onClick={() => {
+                    setEditingWeekId('');
+                    setWeekName('');
+                    setWeekStartDate('');
+                    setWeekEndDate('');
+                  }}
+                >
+                  Hủy sửa
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Tên tuần</th>
+                  <th>Ngày bắt đầu</th>
+                  <th>Ngày kết thúc</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weeklyConfigs.map((week) => (
+                  <tr key={week.id}>
+                    <td>{week.weekName}</td>
+                    <td>{week.startDate}</td>
+                    <td>{week.endDate}</td>
+                    <td>
+                      <button
+                        className="btn outline"
+                        style={{ marginRight: 8 }}
+                        onClick={() => startEditWeeklyConfig(week)}
+                      >
+                        Sửa
+                      </button>
+                      <button className="btn danger" onClick={() => deleteWeeklyConfig(week.id)}>
                         Xóa
                       </button>
                     </td>

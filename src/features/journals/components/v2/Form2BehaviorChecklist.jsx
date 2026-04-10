@@ -69,9 +69,9 @@ const Form2BehaviorChecklist = ({
     } else {
       // Manager submit logic (Evaluate)
       onSubmit({
-        mgr_eval_deep_q: mgrDeepInquiry,
-        mgr_eval_full_cons: mgrFullConsult,
-        mgr_eval_follow: mgrPersistence
+        mgrEvalDeepQ: mgrDeepInquiry,
+        mgrEvalFullCons: mgrFullConsult,
+        mgrEvalFollow: mgrPersistence
       });
     }
   };

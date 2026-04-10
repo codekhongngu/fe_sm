@@ -1,0 +1,4 @@
+username,password,fullName,unitCode,role,telegramChatId
+nv001,123456,Nguyễn Văn A,PKD01,EMPLOYEE,
+nv002,123456,Trần Thị B,PKD01,EMPLOYEE,
+ql001,123456,Lê Văn C,PKD01,MANAGER,

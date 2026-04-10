@@ -76,6 +76,22 @@ const Header = () => {
             Tra cứu nhật ký
           </NavLink>
         ) : null}
+        {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+          <NavLink
+            to="/discipline/manager-daily-score"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Chấm điểm ngày
+          </NavLink>
+        ) : null}
+        {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+          <NavLink
+            to="/discipline/weekly-report"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Mẫu báo cáo
+          </NavLink>
+        ) : null}
         {user?.role === 'ADMIN' ? (
           <NavLink
             to="/system-administration/users"
