@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import behaviorAdminService from '../../../../services/api/behaviorAdminService';
+import managerDailyScoreService from '../../../../services/api/managerDailyScoreService';
 import userService from '../../../../services/api/userService';
 
 const UserManagementPage = () => {
@@ -34,6 +35,19 @@ const UserManagementPage = () => {
   const [weekName, setWeekName] = useState('');
   const [weekStartDate, setWeekStartDate] = useState('');
   const [weekEndDate, setWeekEndDate] = useState('');
+  const [criteria, setCriteria] = useState([]);
+  const [editingCriterionId, setEditingCriterionId] = useState('');
+  const [criterionForm, setCriterionForm] = useState({
+    sectionCode: 'LEARNING',
+    sectionName: 'I. Học tập, rèn luyện',
+    sectionSortOrder: 1,
+    itemCode: '',
+    itemSortOrder: 1,
+    sttLabel: '',
+    contentName: '',
+    maxScore: 1,
+    isActive: true,
+  });
 
   const loadUnits = async () => {
     const data = await userService.getUnits();
@@ -45,13 +59,18 @@ const UserManagementPage = () => {
     setWeeklyConfigs(Array.isArray(data) ? data : []);
   };
 
+  const loadCriteria = async () => {
+    const data = await managerDailyScoreService.getAdminCriteria();
+    setCriteria(Array.isArray(data) ? data : []);
+  };
+
   const loadData = async () => {
     setLoading(true);
     setErrorText('');
     try {
       const data = await userService.getList();
       setUsers(Array.isArray(data) ? data : []);
-      await Promise.all([loadUnits(), loadWeeklyConfigs()]);
+      await Promise.all([loadUnits(), loadWeeklyConfigs(), loadCriteria()]);
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được cấu hình người dùng/đơn vị');
     } finally {
@@ -346,6 +365,76 @@ const UserManagementPage = () => {
     }
   };
 
+  const resetCriterionForm = () => {
+    setEditingCriterionId('');
+    setCriterionForm({
+      sectionCode: 'LEARNING',
+      sectionName: 'I. Học tập, rèn luyện',
+      sectionSortOrder: 1,
+      itemCode: '',
+      itemSortOrder: 1,
+      sttLabel: '',
+      contentName: '',
+      maxScore: 1,
+      isActive: true,
+    });
+  };
+
+  const saveCriterion = async () => {
+    setStatus('');
+    setErrorText('');
+    if (!criterionForm.itemCode || !criterionForm.contentName || !criterionForm.sttLabel) {
+      setErrorText('Vui lòng nhập itemCode, STT và nội dung tiêu chí');
+      return;
+    }
+    try {
+      const payload = {
+        ...criterionForm,
+        sectionSortOrder: Number(criterionForm.sectionSortOrder || 0),
+        itemSortOrder: Number(criterionForm.itemSortOrder || 0),
+        maxScore: Number(criterionForm.maxScore || 0),
+      };
+      if (editingCriterionId) {
+        await managerDailyScoreService.updateCriterion(editingCriterionId, payload);
+        setStatus('Cập nhật tiêu chí thành công');
+      } else {
+        await managerDailyScoreService.createCriterion(payload);
+        setStatus('Tạo tiêu chí thành công');
+      }
+      resetCriterionForm();
+      await loadCriteria();
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Lưu tiêu chí thất bại');
+    }
+  };
+
+  const startEditCriterion = (item) => {
+    setEditingCriterionId(item.id);
+    setCriterionForm({
+      sectionCode: item.sectionCode || '',
+      sectionName: item.sectionName || '',
+      sectionSortOrder: Number(item.sectionSortOrder || 0),
+      itemCode: item.itemCode || '',
+      itemSortOrder: Number(item.itemSortOrder || 0),
+      sttLabel: item.sttLabel || '',
+      contentName: item.contentName || '',
+      maxScore: Number(item.maxScore || 0),
+      isActive: !!item.isActive,
+    });
+  };
+
+  const disableCriterion = async (id) => {
+    setStatus('');
+    setErrorText('');
+    try {
+      await managerDailyScoreService.deleteCriterion(id);
+      setStatus('Đã ngừng kích hoạt tiêu chí');
+      await loadCriteria();
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Ngừng kích hoạt tiêu chí thất bại');
+    }
+  };
+
   const filteredUsers = users.filter((user) => {
     const text = `${user.fullName} ${user.username}`.toLowerCase();
     const matchSearch = !search || text.includes(search.toLowerCase());
@@ -378,6 +467,12 @@ const UserManagementPage = () => {
             onClick={() => setViewMode('weeks')}
           >
             Cấu hình tuần
+          </button>
+          <button
+            className={`btn ${viewMode === 'criteria' ? '' : 'outline'}`}
+            onClick={() => setViewMode('criteria')}
+          >
+            Danh mục điểm
           </button>
         </div>
       </div>
@@ -686,7 +781,7 @@ const UserManagementPage = () => {
             </table>
           </div>
         </>
-      ) : (
+      ) : viewMode === 'weeks' ? (
         <>
           <div className="card" style={{ marginBottom: 12 }}>
             <h3 style={{ marginTop: 0 }}>Cấu hình tuần</h3>
@@ -754,6 +849,137 @@ const UserManagementPage = () => {
                       </button>
                       <button className="btn danger" onClick={() => deleteWeeklyConfig(week.id)}>
                         Xóa
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="card" style={{ marginBottom: 12 }}>
+            <h3 style={{ marginTop: 0 }}>Danh mục manager_daily_score_criteria</h3>
+            <div className="filters" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+              <input
+                className="field"
+                placeholder="sectionCode"
+                value={criterionForm.sectionCode}
+                onChange={(e) => setCriterionForm((prev) => ({ ...prev, sectionCode: e.target.value }))}
+              />
+              <input
+                className="field"
+                placeholder="sectionName"
+                value={criterionForm.sectionName}
+                onChange={(e) => setCriterionForm((prev) => ({ ...prev, sectionName: e.target.value }))}
+              />
+              <input
+                className="field"
+                type="number"
+                placeholder="sectionSortOrder"
+                value={criterionForm.sectionSortOrder}
+                onChange={(e) =>
+                  setCriterionForm((prev) => ({ ...prev, sectionSortOrder: Number(e.target.value || 0) }))
+                }
+              />
+              <input
+                className="field"
+                placeholder="itemCode"
+                value={criterionForm.itemCode}
+                onChange={(e) => setCriterionForm((prev) => ({ ...prev, itemCode: e.target.value }))}
+              />
+              <input
+                className="field"
+                type="number"
+                placeholder="itemSortOrder"
+                value={criterionForm.itemSortOrder}
+                onChange={(e) =>
+                  setCriterionForm((prev) => ({ ...prev, itemSortOrder: Number(e.target.value || 0) }))
+                }
+              />
+              <input
+                className="field"
+                placeholder="STT hiển thị (VD: 2.1)"
+                value={criterionForm.sttLabel}
+                onChange={(e) => setCriterionForm((prev) => ({ ...prev, sttLabel: e.target.value }))}
+              />
+              <input
+                className="field"
+                placeholder="Nội dung tiêu chí"
+                value={criterionForm.contentName}
+                onChange={(e) => setCriterionForm((prev) => ({ ...prev, contentName: e.target.value }))}
+              />
+              <input
+                className="field"
+                type="number"
+                placeholder="Điểm tối đa"
+                value={criterionForm.maxScore}
+                onChange={(e) => setCriterionForm((prev) => ({ ...prev, maxScore: Number(e.target.value || 0) }))}
+              />
+              <select
+                className="field"
+                value={criterionForm.isActive ? 'ACTIVE' : 'INACTIVE'}
+                onChange={(e) =>
+                  setCriterionForm((prev) => ({ ...prev, isActive: e.target.value === 'ACTIVE' }))
+                }
+              >
+                <option value="ACTIVE">Kích hoạt</option>
+                <option value="INACTIVE">Ngừng kích hoạt</option>
+              </select>
+            </div>
+            <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+              <button className="btn" onClick={saveCriterion}>
+                {editingCriterionId ? 'Cập nhật tiêu chí' : 'Thêm tiêu chí'}
+              </button>
+              {editingCriterionId ? (
+                <button className="btn outline" onClick={resetCriterionForm}>
+                  Hủy sửa
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Section</th>
+                  <th>STT</th>
+                  <th>itemCode</th>
+                  <th>Nội dung</th>
+                  <th>Điểm tối đa</th>
+                  <th>Trạng thái</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {criteria.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      {item.sectionName}
+                      <div style={{ color: '#64748b', fontSize: 12 }}>
+                        {item.sectionCode} | sort {item.sectionSortOrder}
+                      </div>
+                    </td>
+                    <td>{item.sttLabel}</td>
+                    <td>
+                      {item.itemCode}
+                      <div style={{ color: '#64748b', fontSize: 12 }}>sort {item.itemSortOrder}</div>
+                    </td>
+                    <td>{item.contentName}</td>
+                    <td>{Number(item.maxScore || 0)}</td>
+                    <td>{item.isActive ? 'Kích hoạt' : 'Ngừng'}</td>
+                    <td>
+                      <button
+                        className="btn outline"
+                        style={{ marginRight: 8 }}
+                        onClick={() => startEditCriterion(item)}
+                      >
+                        Sửa
+                      </button>
+                      <button className="btn danger" onClick={() => disableCriterion(item.id)}>
+                        Ngừng dùng
                       </button>
                     </td>
                   </tr>

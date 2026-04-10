@@ -263,7 +263,7 @@ const ManagerDailyScorePage = () => {
             Nhân viên đang chọn: <strong>{selectedEmployee?.fullName || '-'}</strong> | Đơn vị:{' '}
             <strong>{selectedEmployee?.unitName || '-'}</strong> | Tổng điểm hiện tại:{' '}
             <strong>
-              {currentTotalScore}/{Number(criteriaData?.totalMaxScore || 0)}
+              {currentTotalScore}/100
             </strong>
           </div>
         </section>
