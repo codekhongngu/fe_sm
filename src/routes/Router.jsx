@@ -12,8 +12,12 @@ import WeeklyJournalPage from '../features/journals/pages/WeeklyJournalPage';
 import ManagerReviewPage from '../features/journals/pages/ManagerReviewPage';
 import ManagerDailyScorePage from '../features/manager-daily-scores/pages/ManagerDailyScorePage';
 import WeeklyReportPage from '../features/reports/pages/WeeklyReportPage';
+import ProvincialApprovedJournalsPage from '../features/reports/pages/ProvincialApprovedJournalsPage';
+import ProvincialStatisticsPage from '../features/reports/pages/ProvincialStatisticsPage';
 import UserManagementPage from '../features/system-administration/pages/UserManagement/UserManagementPage';
 import RolePermissionPage from '../features/system-administration/pages/RolePermissionManagement/RolePermissionPage';
+import JourneyPhaseConfigPage from '../features/system-administration/pages/JourneyPhaseConfigPage';
+import LoginHistoryPage from '../features/system-administration/pages/LoginHistoryPage';
 import { selectAuth } from '../store/auth/AuthSlice';
 
 const Router = () => {
@@ -55,7 +59,7 @@ const Router = () => {
         <Route
           path="discipline/manager-daily-score"
           element={
-            <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>
+            <RoleGuard user={user} roles={['MANAGER', 'ADMIN', 'PROVINCIAL_VIEWER']}>
               <ManagerDailyScorePage />
             </RoleGuard>
           }
@@ -63,8 +67,24 @@ const Router = () => {
         <Route
           path="discipline/weekly-report"
           element={
-            <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>
+            <RoleGuard user={user} roles={['MANAGER', 'ADMIN', 'PROVINCIAL_VIEWER']}>
               <WeeklyReportPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="discipline/provincial-approved-journals"
+          element={
+            <RoleGuard user={user} roles={['PROVINCIAL_VIEWER', 'ADMIN']}>
+              <ProvincialApprovedJournalsPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="discipline/provincial-statistics"
+          element={
+            <RoleGuard user={user} roles={['PROVINCIAL_VIEWER', 'ADMIN']}>
+              <ProvincialStatisticsPage />
             </RoleGuard>
           }
         />
@@ -89,6 +109,22 @@ const Router = () => {
           element={
             <RoleGuard user={user} roles={['ADMIN']}>
               <RolePermissionPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="system-administration/journey-phase-configs"
+          element={
+            <RoleGuard user={user} roles={['ADMIN']}>
+              <JourneyPhaseConfigPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="system-administration/login-history"
+          element={
+            <RoleGuard user={user} roles={['ADMIN']}>
+              <LoginHistoryPage />
             </RoleGuard>
           }
         />

@@ -22,7 +22,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           to="/discipline/journey-90"
           className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
         >
-          Lộ trình 90 ngày
+          Nhật ký hằng ngày
         </NavLink>
         {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
           <NavLink
@@ -30,6 +30,14 @@ const Sidebar = ({ isOpen, onClose }) => {
             className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
           >
             Tra cứu nhật ký
+          </NavLink>
+        ) : null}
+        {user?.role === 'ADMIN' ? (
+          <NavLink
+            to="/system-administration/journey-phase-configs"
+            className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
+          >
+            Cấu hình giai đoạn
           </NavLink>
         ) : null}
         {user?.role === 'ADMIN' ? (
@@ -46,6 +54,14 @@ const Sidebar = ({ isOpen, onClose }) => {
             className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
           >
             Cấu hình quyền
+          </NavLink>
+        ) : null}
+        {user?.role === 'ADMIN' ? (
+          <NavLink
+            to="/system-administration/login-history"
+            className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
+          >
+            Lịch sử đăng nhập
           </NavLink>
         ) : null}
       </nav>

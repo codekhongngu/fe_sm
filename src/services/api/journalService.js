@@ -17,10 +17,13 @@ const journalService = {
   getList: (params) => axiosInstance.get('/journals', { params }).then((res) => res.data),
   getById: (id) => axiosInstance.get(`/journals/${id}`).then((res) => res.data),
   getWeeklyConfigs: () => axiosInstance.get('/api/weekly-configs').then((res) => res.data),
+  getJourneyPhaseConfigs: () => axiosInstance.get('/api/journey-phase-configs').then((res) => res.data),
   getWeeklyJournals: (weekId) =>
     axiosInstance.get('/api/weekly-journals', { params: { weekId } }).then((res) => res.data),
   submitWeeklyJournal: (payload) =>
     axiosInstance.post('/api/weekly-journals/submit', payload).then((res) => res.data),
+  getApprovedJournals: (params) =>
+    axiosInstance.get('/api/manager/journals/approved', { params }).then((res) => res.data),
 };
 
 export default journalService;

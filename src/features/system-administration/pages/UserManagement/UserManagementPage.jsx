@@ -520,6 +520,7 @@ const UserManagementPage = () => {
               >
                 <option value="EMPLOYEE">EMPLOYEE</option>
                 <option value="MANAGER">MANAGER</option>
+                <option value="PROVINCIAL_VIEWER">PROVINCIAL_VIEWER</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
               <input
@@ -578,6 +579,7 @@ const UserManagementPage = () => {
                 >
                   <option value="EMPLOYEE">EMPLOYEE</option>
                   <option value="MANAGER">MANAGER</option>
+                  <option value="PROVINCIAL_VIEWER">PROVINCIAL_VIEWER</option>
                   <option value="ADMIN">ADMIN</option>
                 </select>
                 <input
@@ -655,6 +657,7 @@ const UserManagementPage = () => {
                       <select value={user.role} onChange={(e) => changeRole(user.id, e.target.value)}>
                         <option value="EMPLOYEE">EMPLOYEE</option>
                         <option value="MANAGER">MANAGER</option>
+                        <option value="PROVINCIAL_VIEWER">PROVINCIAL_VIEWER</option>
                         <option value="ADMIN">ADMIN</option>
                       </select>
                     </td>

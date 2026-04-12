@@ -8,6 +8,10 @@ const matrix = [
     permissions: ['Quản lý catalog', 'Quản lý người dùng cùng đơn vị', 'Import Excel cùng đơn vị'],
   },
   {
+    role: 'PROVINCIAL_VIEWER',
+    permissions: ['Xem dashboard toàn tỉnh', 'Xem thống kê đa đơn vị', 'Không có quyền cấu hình'],
+  },
+  {
     role: 'EMPLOYEE',
     permissions: ['Không có quyền cấu hình', 'Chỉ sử dụng các nghiệp vụ tác nghiệp'],
   },

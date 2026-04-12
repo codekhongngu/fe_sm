@@ -17,7 +17,14 @@ const Header = () => {
   const [saving, setSaving] = useState(false);
   const displayName = user?.fullName || user?.username || '';
   const avatarText = (displayName || 'U').trim().charAt(0).toUpperCase();
-  const roleLabel = user?.role === 'ADMIN' ? 'Quản trị viên' : user?.role === 'MANAGER' ? 'Quản lý' : 'Nhân viên';
+  const roleLabel =
+    user?.role === 'ADMIN'
+      ? 'Quản trị viên'
+      : user?.role === 'MANAGER'
+        ? 'Quản lý'
+        : user?.role === 'PROVINCIAL_VIEWER'
+          ? 'Thống kê toàn tỉnh'
+          : 'Nhân viên';
 
   const changePassword = async () => {
     setErrorText('');
@@ -62,12 +69,14 @@ const Header = () => {
         >
           Cấu hình catalog
         </NavLink> */}
-        <NavLink
-          to="/discipline/journey-90"
-          className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
-        >
-          Nhật ký hằng ngày
-        </NavLink>
+        {user?.role !== 'PROVINCIAL_VIEWER' ? (
+          <NavLink
+            to="/discipline/journey-90"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Nhật ký hằng ngày
+          </NavLink>
+        ) : null}
         {user?.role === 'EMPLOYEE' ? (
           <NavLink
             to="/discipline/weekly-journal"
@@ -100,6 +109,30 @@ const Header = () => {
             Mẫu báo cáo
           </NavLink>
         ) : null}
+        {user?.role === 'PROVINCIAL_VIEWER' ? (
+          <NavLink
+            to="/discipline/provincial-approved-journals"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Mẫu đã duyệt
+          </NavLink>
+        ) : null}
+        {user?.role === 'PROVINCIAL_VIEWER' ? (
+          <NavLink
+            to="/discipline/provincial-statistics"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Thống kê báo cáo
+          </NavLink>
+        ) : null}
+        {user?.role === 'ADMIN' ? (
+          <NavLink
+            to="/system-administration/journey-phase-configs"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Cấu hình giai đoạn
+          </NavLink>
+        ) : null}
         {user?.role === 'ADMIN' ? (
           <NavLink
             to="/system-administration/users"
@@ -114,6 +147,14 @@ const Header = () => {
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
           >
             Cấu hình quyền
+          </NavLink>
+        ) : null}
+        {user?.role === 'ADMIN' ? (
+          <NavLink
+            to="/system-administration/login-history"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Lịch sử đăng nhập
           </NavLink>
         ) : null}
       </nav>

@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
 import managerDailyScoreService from '../../../services/api/managerDailyScoreService';
+import { selectAuth } from '../../../store/auth/AuthSlice';
 
-const todayKey = new Date().toISOString().slice(0, 10);
+const getEffectiveTodayKey = () => {
+  const d = new Date();
+  if (d.getHours() < 7) {
+    d.setDate(d.getDate() - 1);
+  }
+  return d.toISOString().slice(0, 10);
+};
+
+const todayKey = getEffectiveTodayKey();
 const SCORE_GUIDE_BY_ITEM_CODE = {
   LEARNING_TRAINING_PARTICIPATION:
     'Tốt: hiểu rõ, phát biểu, áp dụng và chia sẻ kinh nghiệm (2-5 điểm)\nĐạt: có tham gia (1 điểm)',
@@ -31,6 +41,7 @@ const BEHAVIOR_CUSTOMERS_CONTACTED_CODE = 'BEHAVIOR_CUSTOMERS_CONTACTED';
 const BEHAVIOR_SUCCESSFUL_CARE_CALLS_CODE = 'BEHAVIOR_SUCCESSFUL_CARE_CALLS';
 
 const ManagerDailyScorePage = () => {
+  const { user } = useSelector(selectAuth);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -69,6 +80,7 @@ const ManagerDailyScorePage = () => {
     () => new Map(allCriteria.map((item) => [item.itemCode, item])),
     [allCriteria],
   );
+  const canEditScore = user?.role === 'MANAGER' || user?.role === 'ADMIN';
 
   const resolveScoreGuide = (itemCode) => SCORE_GUIDE_BY_ITEM_CODE[itemCode] || 'Theo quy định nội bộ';
 
@@ -245,6 +257,10 @@ const ManagerDailyScorePage = () => {
   }, [criteriaData, fromDate, toDate, selectedEmployeeId]);
 
   const onSave = async () => {
+    if (!canEditScore) {
+      setErrorText('Vai trò hiện tại chỉ có quyền xem thống kê');
+      return;
+    }
     setErrorText('');
     setStatusText('');
     if (!validateBeforeSubmit()) {
@@ -350,6 +366,7 @@ const ManagerDailyScorePage = () => {
                 scoreMap={scoreMap}
                 resolveScoreGuide={resolveScoreGuide}
                 onChangeScore={handleScoreChange}
+                readOnly={!canEditScore}
               />
             ))}
           </div>
@@ -357,8 +374,8 @@ const ManagerDailyScorePage = () => {
             <div style={{ color: '#334155' }}>
               Tổng điểm: <strong>{currentTotalScore}</strong>
             </div>
-            <button type="button" className="btn" onClick={onSave} disabled={saving}>
-              {saving ? 'Đang lưu...' : 'Lưu phiếu chấm điểm'}
+            <button type="button" className="btn" onClick={onSave} disabled={saving || !canEditScore}>
+              {saving ? 'Đang lưu...' : canEditScore ? 'Lưu phiếu chấm điểm' : 'Chỉ xem thống kê'}
             </button>
           </div>
         </section>
@@ -456,6 +473,7 @@ const FragmentSection = ({
   scoreMap,
   resolveScoreGuide,
   onChangeScore,
+  readOnly,
 }) => {
   return (
     <div className="manager-daily-score-section">
@@ -476,6 +494,7 @@ const FragmentSection = ({
               max={Number(item.maxScore || 0)}
               className="field"
               value={Number(scoreMap[item.id] ?? 0)}
+              disabled={readOnly}
               onChange={(e) => onChangeScore(item.id, Number(e.target.value || 0))}
             />
             <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>

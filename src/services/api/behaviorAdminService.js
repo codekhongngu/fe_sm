@@ -10,6 +10,13 @@ const behaviorAdminService = {
     axiosInstance.patch(`/api/admin/weekly-configs/${id}`, payload).then((res) => res.data),
   deleteWeeklyConfig: (id) =>
     axiosInstance.delete(`/api/admin/weekly-configs/${id}`).then((res) => res.data),
+
+  getJourneyPhaseConfigs: () =>
+    axiosInstance.get('/api/admin/journey-phase-configs').then((res) => res.data),
+  createJourneyPhaseConfig: (payload) =>
+    axiosInstance.post('/api/admin/journey-phase-configs', payload).then((res) => res.data),
+  updateJourneyPhaseConfig: (id, payload) =>
+    axiosInstance.patch(`/api/admin/journey-phase-configs/${id}`, payload).then((res) => res.data),
 };
 
 export default behaviorAdminService;

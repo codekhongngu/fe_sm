@@ -1,6 +1,7 @@
 import axiosInstance from '../../utils/http/axiosInstance';
 
 const userService = {
+  getLoginLogs: () => axiosInstance.get('/users/login-logs').then((res) => res.data),
   getList: () => axiosInstance.get('/users').then((res) => res.data),
   createUser: (payload) => axiosInstance.post('/users', payload).then((res) => res.data),
   updateUser: (id, payload) => axiosInstance.patch(`/users/${id}`, payload).then((res) => res.data),

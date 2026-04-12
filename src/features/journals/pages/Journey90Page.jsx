@@ -45,6 +45,14 @@ const normalizeText = (value) =>
 
 const formatDisplayText = (value, fallback = '-') => normalizeText(value) || fallback;
 
+const getEffectiveToday = () => {
+  const d = new Date();
+  if (d.getHours() < 7) {
+    d.setDate(d.getDate() - 1);
+  }
+  return d;
+};
+
 const getStartOfWeek = (date) => {
   const day = date.getDay() || 7;
   const start = new Date(date);
@@ -53,10 +61,16 @@ const getStartOfWeek = (date) => {
   return start;
 };
 
+const PHASE_FORM_MAP = {
+  PHASE_1: ['awareness', 'form3', 'form8'],
+  PHASE_2: ['behavior', 'form3', 'form4', 'form5'],
+  PHASE_3: ['form3', 'form4', 'form5', 'form7', 'form9', 'form12'],
+};
+
 const Journey90Page = () => {
-  const todayDefault = toDateKey(new Date());
+  const todayDefault = toDateKey(getEffectiveToday());
   const fromDefault = (() => {
-    const d = new Date();
+    const d = getEffectiveToday();
     d.setDate(d.getDate() - 89);
     return toDateKey(d);
   })();
@@ -71,6 +85,7 @@ const Journey90Page = () => {
   const [activeEform, setActiveEform] = useState('awareness');
   const [fromDate, setFromDate] = useState(fromDefault);
   const [toDate, setToDate] = useState(todayDefault);
+  const [phaseConfigs, setPhaseConfigs] = useState([]);
   const [form, setForm] = useState({
     avoidance: '',
     selfLimit: '',
@@ -90,6 +105,14 @@ const Journey90Page = () => {
     form4Rows: [{ customerName: '', customerIssue: '', consequence: '', solutionOffered: '', valueBasedPricing: '', result: '' }],
     // Mẫu 5
     form5Lesson: '', form5Action: '',
+    // Mẫu 7
+    form7KeptStandard: '', form7BackslideSign: '', form7Solution: '',
+    // Mẫu 9
+    form9SelfLimitArea: '', form9ProofBehavior: '', form9RaiseStandard: '', form9ActionPlan: '',
+    // Mẫu 12
+    form12DeclarationText:
+      'Tôi là nhân viên bán hàng VNPT.\nTôi mang đến giải pháp giúp khách hàng kết nối, học tập, làm việc và an tâm.\nTôi tư vấn bằng trách nhiệm, bán bằng giá trị và thu nhập của tôi tăng tương xứng.',
+    form12CommitmentSignature: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [sharedForms, setSharedForms] = useState(() => {
@@ -136,7 +159,7 @@ const Journey90Page = () => {
         }
       });
       setJournalsByDate(map);
-      setSelectedDateKey(toDateKey(new Date()));
+      setSelectedDateKey(toDateKey(getEffectiveToday()));
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được lịch sử nhật ký');
     } finally {
@@ -147,6 +170,13 @@ const Journey90Page = () => {
   useEffect(() => {
     loadJournals();
   }, [fromDate, toDate, statusFilter]);
+
+  useEffect(() => {
+    journalService
+      .getJourneyPhaseConfigs()
+      .then((rows) => setPhaseConfigs(Array.isArray(rows) ? rows : []))
+      .catch(() => setPhaseConfigs([]));
+  }, []);
 
   const [extraLogs, setExtraLogs] = useState({});
 
@@ -180,14 +210,14 @@ const Journey90Page = () => {
   const cycleStartDateKey = useMemo(() => {
     const keys = Object.keys(journalsByDate);
     if (keys.length === 0) {
-      return toDateKey(new Date());
+      return toDateKey(getEffectiveToday());
     }
     return [...keys].sort()[0];
   }, [journalsByDate]);
 
   const timelineEntries = useMemo(() => {
     const startDate = fromDateKey(cycleStartDateKey);
-    const today = new Date();
+    const today = getEffectiveToday();
     return Array.from({ length: 90 }).map((_, idx) => {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + idx);
@@ -216,7 +246,7 @@ const Journey90Page = () => {
   }, [journalsByDate, cycleStartDateKey]);
 
   const filteredEntries = useMemo(() => {
-    const now = new Date();
+    const now = getEffectiveToday();
     const startOfWeek = getStartOfWeek(now);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     return timelineEntries.filter((entry) => {
@@ -237,7 +267,7 @@ const Journey90Page = () => {
   const progress = useMemo(() => {
     const submittedCount = timelineEntries.filter((entry) => entry.journalId).length;
     let streak = 0;
-    const todayKey = toDateKey(new Date());
+    const todayKey = toDateKey(getEffectiveToday());
     let cursor = fromDateKey(todayKey);
     while (true) {
       const key = toDateKey(cursor);
@@ -249,7 +279,7 @@ const Journey90Page = () => {
       }
     }
     const cycleStart = fromDateKey(cycleStartDateKey);
-    const now = new Date();
+    const now = getEffectiveToday();
     const currentDay = Math.max(
       1,
       Math.min(90, Math.floor((now.getTime() - cycleStart.getTime()) / 86400000) + 1),
@@ -257,13 +287,13 @@ const Journey90Page = () => {
     return { submittedCount, streak, currentDay };
   }, [timelineEntries, journalsByDate, cycleStartDateKey]);
 
-  const todayKey = toDateKey(new Date());
+  const todayKey = toDateKey(getEffectiveToday());
   const todayJournal = journalsByDate[todayKey];
 
   const selectedStatus = selectedDateKey
     ? (() => {
         const selectedDate = fromDateKey(selectedDateKey);
-        const today = new Date();
+        const today = getEffectiveToday();
         if (selectedDate > today) return 'future';
         if (selectedJournal?.evaluation) return 'graded';
         if (
@@ -277,8 +307,33 @@ const Journey90Page = () => {
     : 'missed';
 
   const availableForms = useMemo(() => {
-    return ['awareness', 'form3', 'form8'];
-  }, []);
+    const activePhaseConfigs = (Array.isArray(phaseConfigs) ? phaseConfigs : [])
+      .filter((item) => item?.isActive !== false)
+      .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    
+    const today = toDateKey(getEffectiveToday());
+    const matched =
+      activePhaseConfigs.find(
+        (item) =>
+          item.startDate &&
+          item.endDate &&
+          today >= item.startDate &&
+          today <= item.endDate
+      ) || null;
+
+    if (matched && Array.isArray(matched.allowedForms) && matched.allowedForms.length > 0) {
+      return matched.allowedForms;
+    }
+
+    const phaseCode = String(matched?.phaseCode || '').toUpperCase();
+    return PHASE_FORM_MAP[phaseCode] || PHASE_FORM_MAP.PHASE_1;
+  }, [phaseConfigs, getEffectiveToday]);
+
+  useEffect(() => {
+    if (!availableForms.includes(activeEform)) {
+      setActiveEform(availableForms[0] || 'awareness');
+    }
+  }, [availableForms, activeEform]);
 
   const [infoText, setInfoText] = useState('');
 
@@ -300,33 +355,6 @@ const Journey90Page = () => {
       } else {
         setShowForm(false);
         setInfoText(successMsg);
-        
-        setInfoText(
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-            <span>{successMsg}</span>
-            <button
-              className="btn outline"
-              style={{ padding: '6px 12px', fontSize: '13px' }}
-              onClick={() =>
-                handleShareTelegram(
-                  formType === 'FORM_2'
-                    ? 'behavior'
-                    : formType === 'FORM_3'
-                      ? 'form3'
-                      : formType === 'FORM_4'
-                        ? 'form4'
-                        : formType === 'FORM_5'
-                          ? 'form5'
-                          : 'form8',
-                  formType,
-                  formType,
-                )
-              }
-            >
-              Nhắn Telegram
-            </button>
-          </div>
-        );
       }
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Nộp biểu mẫu thất bại');
@@ -451,6 +479,39 @@ const Journey90Page = () => {
     }));
   };
 
+  const submitForm7 = async () => {
+    const nextIndex = availableForms.indexOf('form7') + 1;
+    const nextForm = availableForms[nextIndex];
+    const mapped = {
+      keptStandard: form.form7KeptStandard,
+      backslideSign: form.form7BackslideSign,
+      phase3Solution: form.form7Solution,
+    };
+    await submitGenericForm('FORM_7', mapped, 'Đã lưu Mẫu 7: Nhật ký giữ chuẩn thu nhập', nextForm);
+  };
+
+  const submitForm9 = async () => {
+    const nextIndex = availableForms.indexOf('form9') + 1;
+    const nextForm = availableForms[nextIndex];
+    const mapped = {
+      selfLimitArea: form.form9SelfLimitArea,
+      proofBehavior: form.form9ProofBehavior,
+      raiseStandard: form.form9RaiseStandard,
+      actionPlan: form.form9ActionPlan,
+    };
+    await submitGenericForm('FORM_9', mapped, 'Đã lưu Mẫu 9: Nhật ký phá giới hạn thu nhập', nextForm);
+  };
+
+  const submitForm12 = async () => {
+    const nextIndex = availableForms.indexOf('form12') + 1;
+    const nextForm = availableForms[nextIndex];
+    const mapped = {
+      declarationText: form.form12DeclarationText,
+      commitmentSignature: form.form12CommitmentSignature,
+    };
+    await submitGenericForm('FORM_12', mapped, 'Đã lưu Mẫu 12: Tuyên ngôn nghề nghiệp cá nhân', nextForm);
+  };
+
   const handleShareTelegram = async (shareKey, formType, formName, formPart) => {
     try {
       const detailUrl = `${window.location.origin}/discipline/manager-review/${journalsByDate[todayKey]?.id || ''}`;
@@ -469,7 +530,7 @@ const Journey90Page = () => {
 
   const openTodayForm = async () => {
     setShowForm(true);
-    setActiveEform('awareness');
+    setActiveEform(availableForms[0] || 'awareness');
     setInfoText('');
     setErrorText('');
     const todayJournal = journalsByDate[todayKey];
@@ -517,6 +578,17 @@ const Journey90Page = () => {
               result: item.result || '',
             }))
           : [{ situation: '', oldBelief: '', newChosenBelief: '', newBehavior: '', result: '' }],
+        form7KeptStandard: extraLogsData?.form7?.keptStandard || '',
+        form7BackslideSign: extraLogsData?.form7?.backslideSign || '',
+        form7Solution: extraLogsData?.form7?.solution || '',
+        form9SelfLimitArea: extraLogsData?.form9?.selfLimitArea || '',
+        form9ProofBehavior: extraLogsData?.form9?.proofBehavior || '',
+        form9RaiseStandard: extraLogsData?.form9?.raiseStandard || '',
+        form9ActionPlan: extraLogsData?.form9?.actionPlan || '',
+        form12DeclarationText:
+          extraLogsData?.form12?.declarationText ||
+          'Tôi là nhân viên bán hàng VNPT.\nTôi mang đến giải pháp giúp khách hàng kết nối, học tập, làm việc và an tâm.\nTôi tư vấn bằng trách nhiệm, bán bằng giá trị và thu nhập của tôi tăng tương xứng.',
+        form12CommitmentSignature: extraLogsData?.form12?.commitmentSignature || '',
       });
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được dữ liệu hôm nay');
@@ -580,6 +652,12 @@ const Journey90Page = () => {
                       ? 'Nhật ký nhận diện hàng ngày'
                       : activeEform === 'form3'
                         ? 'Mẫu 3: Thay đổi Tư duy'
+                        : activeEform === 'form7'
+                          ? 'Mẫu 7: Nhật ký giữ chuẩn thu nhập'
+                          : activeEform === 'form9'
+                            ? 'Mẫu 9: Nhật ký phá giới hạn thu nhập'
+                            : activeEform === 'form12'
+                              ? 'Mẫu 12: Tuyên ngôn nghề nghiệp cá nhân'
                         : activeEform === 'form8'
                           ? 'Mẫu 8: Củng cố niềm tin'
                           : 'Nhật ký hằng ngày'}
@@ -589,6 +667,12 @@ const Journey90Page = () => {
                       ? 'Nhật ký nhận diện hàng ngày'
                       : activeEform === 'form3'
                         ? 'Mẫu 3: Thay đổi Tư duy'
+                        : activeEform === 'form7'
+                          ? 'Mẫu 7: Nhật ký giữ chuẩn thu nhập'
+                          : activeEform === 'form9'
+                            ? 'Mẫu 9: Nhật ký phá giới hạn thu nhập'
+                            : activeEform === 'form12'
+                              ? 'Mẫu 12: Tuyên ngôn nghề nghiệp cá nhân'
                         : activeEform === 'form8'
                           ? 'Mẫu 8: Củng cố niềm tin'
                           : 'Nhật ký hằng ngày'}
@@ -598,6 +682,12 @@ const Journey90Page = () => {
                       ? 'Dành vài phút để trung thực với bản thân và nhận diện điểm nghẽn.'
                       : activeEform === 'form3'
                         ? 'Ghi lại sự thay đổi tư duy và hành vi để nâng hiệu quả làm việc.'
+                        : activeEform === 'form7'
+                          ? 'Giữ chuẩn thu nhập mới và ngăn ngừa tụt chuẩn trong giai đoạn 3.'
+                          : activeEform === 'form9'
+                            ? 'Phá trần thu nhập bằng hành động cụ thể và nâng chuẩn nội tâm.'
+                            : activeEform === 'form12'
+                              ? 'Tuyên ngôn nghề nghiệp cá nhân và cam kết hành động.'
                         : activeEform === 'form8'
                           ? 'Củng cố niềm tin mới bằng tình huống thực tế và kết quả đạt được.'
                           : 'Theo dõi nhật ký làm việc hằng ngày.'}
@@ -663,6 +753,30 @@ const Journey90Page = () => {
                     onClick={() => setActiveEform('form8')}
                   >
                     Mẫu 8: Củng cố niềm tin
+                  </button>
+                )}
+                {availableForms.includes('form7') && (
+                  <button
+                    className={`journey-eform-tab ${activeEform === 'form7' ? 'active' : ''}`}
+                    onClick={() => setActiveEform('form7')}
+                  >
+                    Mẫu 7: Giữ chuẩn thu nhập
+                  </button>
+                )}
+                {availableForms.includes('form9') && (
+                  <button
+                    className={`journey-eform-tab ${activeEform === 'form9' ? 'active' : ''}`}
+                    onClick={() => setActiveEform('form9')}
+                  >
+                    Mẫu 9: Phá giới hạn thu nhập
+                  </button>
+                )}
+                {availableForms.includes('form12') && (
+                  <button
+                    className={`journey-eform-tab ${activeEform === 'form12' ? 'active' : ''}`}
+                    onClick={() => setActiveEform('form12')}
+                  >
+                    Mẫu 12: Tuyên ngôn nghề nghiệp
                   </button>
                 )}
               </div>
@@ -896,6 +1010,140 @@ const Journey90Page = () => {
                     </button>
                   </div>
                 </div>
+              ) : activeEform === 'form7' ? (
+                <div className="journey-eform-grid standards">
+                  <div className="journey-eform-card wide">
+                    <div className="journey-eform-card-head">
+                      <span className="journey-eform-no">01</span>
+                      <span>Tôi đã giữ được chuẩn nào?</span>
+                    </div>
+                    <textarea
+                      className="field journey-eform-textarea"
+                      rows={4}
+                      value={form.form7KeptStandard}
+                      onChange={(e) => setForm((prev) => ({ ...prev, form7KeptStandard: e.target.value }))}
+                    />
+                  </div>
+                  <div className="journey-eform-card">
+                    <div className="journey-eform-card-head">
+                      <span className="journey-eform-no">02</span>
+                      <span>Dấu hiệu tụt chuẩn nào xuất hiện?</span>
+                    </div>
+                    <textarea
+                      className="field journey-eform-textarea"
+                      rows={4}
+                      value={form.form7BackslideSign}
+                      onChange={(e) => setForm((prev) => ({ ...prev, form7BackslideSign: e.target.value }))}
+                    />
+                  </div>
+                  <div className="journey-eform-card">
+                    <div className="journey-eform-card-head">
+                      <span className="journey-eform-no">03</span>
+                      <span>Tôi đã xử lý nó ra sao?</span>
+                    </div>
+                    <textarea
+                      className="field journey-eform-textarea"
+                      rows={4}
+                      value={form.form7Solution}
+                      onChange={(e) => setForm((prev) => ({ ...prev, form7Solution: e.target.value }))}
+                    />
+                  </div>
+                  <div className="journey-eform-actions" style={{ justifyContent: 'flex-end', width: '100%' }}>
+                    <button className="btn" onClick={submitForm7} disabled={submitting}>
+                      {submitting ? 'Đang lưu...' : 'Lưu Mẫu 7'}
+                    </button>
+                  </div>
+                </div>
+              ) : activeEform === 'form9' ? (
+                <div className="journey-eform-grid standards">
+                  <div className="journey-eform-card">
+                    <div className="journey-eform-card-head">
+                      <span className="journey-eform-no">01</span>
+                      <span>Tôi đang tự giới hạn thu nhập ở đâu?</span>
+                    </div>
+                    <textarea
+                      className="field journey-eform-textarea"
+                      rows={4}
+                      value={form.form9SelfLimitArea}
+                      onChange={(e) => setForm((prev) => ({ ...prev, form9SelfLimitArea: e.target.value }))}
+                    />
+                  </div>
+                  <div className="journey-eform-card">
+                    <div className="journey-eform-card-head">
+                      <span className="journey-eform-no">02</span>
+                      <span>Hành vi chứng minh điều đó</span>
+                    </div>
+                    <textarea
+                      className="field journey-eform-textarea"
+                      rows={4}
+                      value={form.form9ProofBehavior}
+                      onChange={(e) => setForm((prev) => ({ ...prev, form9ProofBehavior: e.target.value }))}
+                    />
+                  </div>
+                  <div className="journey-eform-card">
+                    <div className="journey-eform-card-head">
+                      <span className="journey-eform-no">03</span>
+                      <span>Tôi nâng chuẩn thu nhập lên thế nào</span>
+                    </div>
+                    <textarea
+                      className="field journey-eform-textarea"
+                      rows={4}
+                      value={form.form9RaiseStandard}
+                      onChange={(e) => setForm((prev) => ({ ...prev, form9RaiseStandard: e.target.value }))}
+                    />
+                  </div>
+                  <div className="journey-eform-card">
+                    <div className="journey-eform-card-head">
+                      <span className="journey-eform-no">04</span>
+                      <span>Hành động cụ thể</span>
+                    </div>
+                    <textarea
+                      className="field journey-eform-textarea"
+                      rows={4}
+                      value={form.form9ActionPlan}
+                      onChange={(e) => setForm((prev) => ({ ...prev, form9ActionPlan: e.target.value }))}
+                    />
+                  </div>
+                  <div className="journey-eform-actions" style={{ justifyContent: 'flex-end', width: '100%' }}>
+                    <button className="btn" onClick={submitForm9} disabled={submitting}>
+                      {submitting ? 'Đang lưu...' : 'Lưu Mẫu 9'}
+                    </button>
+                  </div>
+                </div>
+              ) : activeEform === 'form12' ? (
+                <div className="journey-eform-grid standards">
+                  <div className="journey-eform-card wide">
+                    <div className="journey-eform-card-head">
+                      <span className="journey-eform-no">01</span>
+                      <span>Tuyên ngôn nghề nghiệp cá nhân</span>
+                    </div>
+                    <textarea
+                      className="field journey-eform-textarea"
+                      rows={5}
+                      value={form.form12DeclarationText}
+                      onChange={(e) => setForm((prev) => ({ ...prev, form12DeclarationText: e.target.value }))}
+                    />
+                  </div>
+                  <div className="journey-eform-card">
+                    <div className="journey-eform-card-head">
+                      <span className="journey-eform-no">02</span>
+                      <span>Ký tên – Ngày cam kết</span>
+                    </div>
+                    <input
+                      className="field"
+                      value={form.form12CommitmentSignature}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, form12CommitmentSignature: e.target.value }))
+                      }
+                      placeholder="Ví dụ: Nguyễn Văn A - 15/04/2026"
+                    />
+                  </div>
+                  <div className="journey-eform-actions" style={{ justifyContent: 'flex-end', width: '100%' }}>
+                    <button className="btn" onClick={submitForm12} disabled={submitting}>
+                      {submitting ? 'Đang lưu...' : 'Lưu Mẫu 12'}
+                    </button>
+                  </div>
+                </div>
               ) : null}
 
               {['awareness', 'standards'].includes(activeEform) && (
@@ -1058,12 +1306,51 @@ const Journey90Page = () => {
               >
                 Mở nhật ký hôm nay
               </button>
-              <span className={`journey-mini-badge ${todayJournal?.awarenessSubmittedAt ? 'ok' : ''}`}>
-                Nhật ký nhận diện hằng ngày: {todayJournal?.awarenessSubmittedAt ? 'Đã nộp' : 'Chưa nộp'}
-              </span>
-              <span className={`journey-mini-badge ${todayJournal?.standardsSubmittedAt ? 'ok' : ''}`}>
-                Nhật ký giữ chuẩn thu nhập cao: {todayJournal?.standardsSubmittedAt ? 'Đã nộp' : 'Chưa nộp'}
-              </span>
+              {availableForms.includes('awareness') && (
+                <span className={`journey-mini-badge ${todayJournal?.awarenessSubmittedAt ? 'ok' : ''}`}>
+                  Mẫu 1 nhận diện: {todayJournal?.awarenessSubmittedAt ? 'Đã nộp' : 'Chưa nộp'}
+                </span>
+              )}
+              {availableForms.includes('form3') && (
+                <span className={`journey-mini-badge ${extraLogs?.form3 ? 'ok' : ''}`}>
+                  Mẫu 3: {extraLogs?.form3 ? 'Đã nộp' : 'Chưa nộp'}
+                </span>
+              )}
+              {availableForms.includes('form8') && (
+                <span className={`journey-mini-badge ${Array.isArray(extraLogs?.form8) && extraLogs.form8.length > 0 ? 'ok' : ''}`}>
+                  Mẫu 8: {Array.isArray(extraLogs?.form8) && extraLogs.form8.length > 0 ? 'Đã nộp' : 'Chưa nộp'}
+                </span>
+              )}
+              {availableForms.includes('form4') && (
+                <span className={`journey-mini-badge ${Array.isArray(extraLogs?.form4) && extraLogs.form4.length > 0 ? 'ok' : ''}`}>
+                  Mẫu 4: {Array.isArray(extraLogs?.form4) && extraLogs.form4.length > 0 ? 'Đã nộp' : 'Chưa nộp'}
+                </span>
+              )}
+              {availableForms.includes('form5') && (
+                <span className={`journey-mini-badge ${extraLogs?.form5 ? 'ok' : ''}`}>
+                  Mẫu 5: {extraLogs?.form5 ? 'Đã nộp' : 'Chưa nộp'}
+                </span>
+              )}
+              {availableForms.includes('behavior') && (
+                <span className={`journey-mini-badge ${extraLogs?.form2 ? 'ok' : ''}`}>
+                  Mẫu 2: {extraLogs?.form2 ? 'Đã nộp' : 'Chưa nộp'}
+                </span>
+              )}
+              {availableForms.includes('form7') && (
+                <span className={`journey-mini-badge ${extraLogs?.form7 ? 'ok' : ''}`}>
+                  Mẫu 7: {extraLogs?.form7 ? 'Đã nộp' : 'Chưa nộp'}
+                </span>
+              )}
+              {availableForms.includes('form9') && (
+                <span className={`journey-mini-badge ${extraLogs?.form9 ? 'ok' : ''}`}>
+                  Mẫu 9: {extraLogs?.form9 ? 'Đã nộp' : 'Chưa nộp'}
+                </span>
+              )}
+              {availableForms.includes('form12') && (
+                <span className={`journey-mini-badge ${extraLogs?.form12 ? 'ok' : ''}`}>
+                  Mẫu 12: {extraLogs?.form12 ? 'Đã nộp' : 'Chưa nộp'}
+                </span>
+              )}
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Đã nộp: {progress.submittedCount}/90</div>
           </div>
@@ -1074,16 +1361,15 @@ const Journey90Page = () => {
 
           <div style={{ marginBottom: '24px' }}>
             <JourneyTimelineStepper
-              currentDay={progress.currentDay}
-              totalDays={90}
-              logs={timelineEntries.map(entry => ({
-                dayNumber: Math.max(1, Math.floor((fromDateKey(entry.dateKey).getTime() - fromDateKey(cycleStartDateKey).getTime()) / 86400000) + 1),
-                status: entry.status
-              }))}
-              onSelectDay={(dayNum) => {
-                const cycleStart = fromDateKey(cycleStartDateKey);
-                const targetDate = new Date(cycleStart);
-                targetDate.setDate(cycleStart.getDate() + (dayNum - 1));
+                currentDay={progress.currentDay}
+                totalDays={90}
+                phaseConfigs={phaseConfigs}
+                logs={timelineEntries.map(entry => ({
+                  dateKey: entry.dateKey,
+                  status: entry.status
+                }))}
+                onSelectDay={(dateKey) => {
+                  const targetDate = fromDateKey(dateKey);
                 setSelectedDateKey(toDateKey(targetDate));
               }}
             />
@@ -1102,7 +1388,7 @@ const Journey90Page = () => {
             </span>
           </div>
 
-          {selectedJournal || extraLogs?.form2 || extraLogs?.form3 || extraLogs?.form4 || extraLogs?.form5 || extraLogs?.form8 ? (
+          {selectedJournal || extraLogs?.form2 || extraLogs?.form3 || extraLogs?.form4 || extraLogs?.form5 || extraLogs?.form7 || extraLogs?.form8 || extraLogs?.form9 || extraLogs?.form12 ? (
             <div className="journey-compare">
               <div className="journey-column">
                 <h4>Nhật ký nhận diện hằng ngày</h4>
@@ -1181,6 +1467,41 @@ const Journey90Page = () => {
                         <li>Kết quả: {formatDisplayText(item.result)}</li>
                       </ul>
                     ))}
+                  </div>
+                )}
+
+                {extraLogs?.form7 && (
+                  <div style={{ marginTop: 14 }}>
+                    <strong>Mẫu 7: Nhật ký giữ chuẩn thu nhập</strong>
+                    <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
+                      <li>Tôi đã giữ được chuẩn nào: {formatDisplayText(extraLogs.form7.keptStandard)}</li>
+                      <li>Dấu hiệu tụt chuẩn: {formatDisplayText(extraLogs.form7.backslideSign)}</li>
+                      <li>Tôi đã xử lý nó ra sao: {formatDisplayText(extraLogs.form7.solution)}</li>
+                    </ul>
+                  </div>
+                )}
+
+                {extraLogs?.form9 && (
+                  <div style={{ marginTop: 14 }}>
+                    <strong>Mẫu 9: Nhật ký phá giới hạn thu nhập</strong>
+                    <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
+                      <li>Tôi đang tự giới hạn ở đâu: {formatDisplayText(extraLogs.form9.selfLimitArea)}</li>
+                      <li>Hành vi chứng minh: {formatDisplayText(extraLogs.form9.proofBehavior)}</li>
+                      <li>Tôi nâng chuẩn thế nào: {formatDisplayText(extraLogs.form9.raiseStandard)}</li>
+                      <li>Hành động cụ thể: {formatDisplayText(extraLogs.form9.actionPlan)}</li>
+                    </ul>
+                  </div>
+                )}
+
+                {extraLogs?.form12 && (
+                  <div style={{ marginTop: 14 }}>
+                    <strong>Mẫu 12: Tuyên ngôn nghề nghiệp cá nhân</strong>
+                    <div style={{ marginTop: 6, fontSize: 13 }}>
+                      {formatDisplayText(extraLogs.form12.declarationText)}
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 13 }}>
+                      Ký tên – Ngày cam kết: {formatDisplayText(extraLogs.form12.commitmentSignature)}
+                    </div>
                   </div>
                 )}
               </div>

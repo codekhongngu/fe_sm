@@ -36,12 +36,32 @@ const daysAgoKey = (days) => {
   return toDateKey(date);
 };
 
+const ALL_AVAILABLE_FORMS = [
+  { id: 'awareness', label: 'Mẫu 1: Nhận diện' },
+  { id: 'behavior', label: 'Mẫu 2: Hành vi' },
+  { id: 'form3', label: 'Mẫu 3: Thay đổi Tư duy' },
+  { id: 'form4', label: 'Mẫu 4: Báo cáo Bán hàng' },
+  { id: 'form5', label: 'Mẫu 5: Ghi chép cuối ngày' },
+  { id: 'form7', label: 'Mẫu 7: Giữ chuẩn thu nhập' },
+  { id: 'form8', label: 'Mẫu 8: Củng cố niềm tin' },
+  { id: 'form9', label: 'Mẫu 9: Phá giới hạn thu nhập' },
+  { id: 'form12', label: 'Mẫu 12: Tuyên ngôn nghề nghiệp' }
+];
+
+const PHASE_FORM_MAP = {
+  PHASE_1: ['awareness', 'form3', 'form8'],
+  PHASE_2: ['behavior', 'form3', 'form4', 'form5'],
+  PHASE_3: ['form3', 'form4', 'form5', 'form7', 'form9', 'form12'],
+};
+
 const DashboardPage = () => {
   const { user } = useSelector(selectAuth);
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [period, setPeriod] = useState('month');
   const [unitId, setUnitId] = useState('');
+  const [phaseId, setPhaseId] = useState('');
+  const [phaseConfigs, setPhaseConfigs] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [adminTab, setAdminTab] = useState('overview');
   const [pendingCount, setPendingCount] = useState(0);
@@ -49,17 +69,20 @@ const DashboardPage = () => {
   const [todayScoreStats, setTodayScoreStats] = useState(null);
   const [employeeDashboard, setEmployeeDashboard] = useState(null);
 
-  const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+  const isManagerOrAdmin =
+    user?.role === 'MANAGER' || user?.role === 'ADMIN' || user?.role === 'PROVINCIAL_VIEWER';
+  const canViewProvince = user?.role === 'ADMIN' || user?.role === 'PROVINCIAL_VIEWER';
 
   const loadManagerDashboard = async () => {
     setLoading(true);
     setErrorText('');
     try {
       const todayKey = toDateKey(new Date());
-      const [analyticsData, pending, weekly, dailyScore] = await Promise.all([
+      const [analyticsData, pending, weekly, dailyScore, phases] = await Promise.all([
         dashboardService.getBehaviorAnalytics({
-          period,
+          period: phaseId ? undefined : period,
           unitId: unitId || undefined,
+          phaseId: phaseId || undefined,
         }),
         evaluationService.getPendingList(),
         evaluationService.getWeeklyAnalytics(),
@@ -67,11 +90,13 @@ const DashboardPage = () => {
           fromDate: todayKey,
           toDate: todayKey,
         }),
+        journalService.getJourneyPhaseConfigs().catch(() => []),
       ]);
       setAnalytics(analyticsData);
       setPendingCount(Array.isArray(pending) ? pending.length : 0);
       setWeeklyEval(weekly || null);
       setTodayScoreStats(dailyScore?.totals || null);
+      setPhaseConfigs(Array.isArray(phases) ? phases : []);
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được dữ liệu dashboard');
     } finally {
@@ -85,9 +110,10 @@ const DashboardPage = () => {
     try {
       const todayKey = toDateKey(new Date());
       const fromDate = daysAgoKey(29);
-      const [journals, logsToday] = await Promise.all([
+      const [journals, logsToday, phaseConfigs] = await Promise.all([
         journalService.getList({ fromDate, toDate: todayKey }),
         journalService.getLogsHistory(null, todayKey).catch(() => ({})),
+        journalService.getJourneyPhaseConfigs().catch(() => []),
       ]);
       const list = Array.isArray(journals) ? journals : [];
       const byDay = new Map(list.map((item) => [item.reportDate, item]));
@@ -96,15 +122,43 @@ const DashboardPage = () => {
       ).length;
       const evaluatedDays = list.filter((item) => !!item.evaluation).length;
       const todayJournal = byDay.get(todayKey);
-      const formStatusRows = [
-        { form: 'Mẫu 1: Nhận diện', submitted: !!todayJournal?.awarenessSubmittedAt },
-        // { form: 'Mẫu 1: Giữ chuẩn', submitted: !!todayJournal?.standardsSubmittedAt },
-        { form: 'Mẫu 2: Hành vi', submitted: !!logsToday?.form2 },
-        { form: 'Mẫu 3: Thay đổi tư duy', submitted: !!logsToday?.form3 },
-        { form: 'Mẫu 4: Báo cáo bán hàng', submitted: Array.isArray(logsToday?.form4) && logsToday.form4.length > 0 },
-        { form: 'Mẫu 5: Ghi chép cuối ngày', submitted: !!logsToday?.form5 },
-        { form: 'Mẫu 8: Củng cố niềm tin', submitted: Array.isArray(logsToday?.form8) && logsToday.form8.length > 0 },
-      ];
+
+      let allowedForms = [];
+      const activePhaseConfigs = (Array.isArray(phaseConfigs) ? phaseConfigs : [])
+        .filter((item) => item?.isActive !== false)
+        .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+      
+      const matched = activePhaseConfigs.find(
+        (item) =>
+          item.startDate &&
+          item.endDate &&
+          todayKey >= item.startDate &&
+          todayKey <= item.endDate
+      ) || null;
+
+      if (matched && Array.isArray(matched.allowedForms) && matched.allowedForms.length > 0) {
+        allowedForms = matched.allowedForms;
+      } else {
+        const phaseCode = String(matched?.phaseCode || '').toUpperCase();
+        allowedForms = PHASE_FORM_MAP[phaseCode] || PHASE_FORM_MAP.PHASE_1;
+      }
+
+      const formStatusRows = allowedForms.map(formId => {
+        let isSubmitted = false;
+        if (formId === 'awareness') isSubmitted = !!todayJournal?.awarenessSubmittedAt;
+        if (formId === 'behavior') isSubmitted = !!logsToday?.form2;
+        if (formId === 'form3') isSubmitted = !!logsToday?.form3;
+        if (formId === 'form4') isSubmitted = Array.isArray(logsToday?.form4) && logsToday.form4.length > 0;
+        if (formId === 'form5') isSubmitted = !!logsToday?.form5;
+        if (formId === 'form7') isSubmitted = !!logsToday?.form7;
+        if (formId === 'form8') isSubmitted = Array.isArray(logsToday?.form8) && logsToday.form8.length > 0;
+        if (formId === 'form9') isSubmitted = !!logsToday?.form9;
+        if (formId === 'form12') isSubmitted = !!logsToday?.form12;
+
+        const label = ALL_AVAILABLE_FORMS.find(f => f.id === formId)?.label || formId;
+        return { form: label, submitted: isSubmitted };
+      });
+
       const submittedTodayCount = formStatusRows.filter((item) => item.submitted).length;
       const last7Days = Array.from({ length: 7 })
         .map((_, index) => {
@@ -136,7 +190,7 @@ const DashboardPage = () => {
       return;
     }
     loadEmployeeDashboard();
-  }, [isManagerOrAdmin, period, unitId]);
+  }, [isManagerOrAdmin, period, unitId, phaseId]);
 
   const exportExcel = () => {
     if (!analytics || !isManagerOrAdmin) return;
@@ -188,7 +242,7 @@ const DashboardPage = () => {
           <div className="card">
             <div style={{ color: '#64748b' }}>Mẫu đã nộp hôm nay</div>
             <div style={{ fontSize: 28, fontWeight: 800 }}>
-              {employeeDashboard?.submittedTodayCount || 0}/7
+              {employeeDashboard?.submittedTodayCount || 0}/{employeeDashboard?.formStatusRows?.length || 0}
             </div>
           </div>
           <div className="card">
@@ -257,10 +311,18 @@ const DashboardPage = () => {
 
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="filters">
-          <select className="field" value={period} onChange={(e) => setPeriod(e.target.value)}>
+          <select className="field" value={period} onChange={(e) => { setPeriod(e.target.value); setPhaseId(''); }}>
             <option value="week">Tuần</option>
             <option value="month">Tháng</option>
             <option value="quarter">Quý</option>
+          </select>
+          <select className="field" value={phaseId} onChange={(e) => { setPhaseId(e.target.value); if(e.target.value) setPeriod(''); }}>
+            <option value="">-- Lọc theo giai đoạn --</option>
+            {phaseConfigs.filter(p => p.isActive !== false).map((phase) => (
+              <option key={phase.id} value={phase.id}>
+                {phase.phaseName}
+              </option>
+            ))}
           </select>
           <select
             className="field"
@@ -268,7 +330,7 @@ const DashboardPage = () => {
             onChange={(e) => setUnitId(e.target.value)}
             disabled={user?.role === 'MANAGER'}
           >
-            <option value="">{user?.role === 'ADMIN' ? 'Toàn tỉnh' : 'Đơn vị của tôi'}</option>
+            <option value="">{canViewProvince ? 'Toàn tỉnh' : 'Đơn vị của tôi'}</option>
             {unitOptions.map((unit) => (
               <option key={unit.id} value={unit.id}>
                 {unit.code} - {unit.name}
@@ -282,7 +344,7 @@ const DashboardPage = () => {
             Xuất Excel
           </button>
         </div>
-        {user?.role === 'ADMIN' ? (
+        {canViewProvince ? (
           <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
             <button
               className={`btn ${adminTab === 'overview' ? '' : 'outline'}`}
@@ -326,7 +388,7 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {adminTab === 'province' && user?.role === 'ADMIN' ? (
+      {adminTab === 'province' && canViewProvince ? (
         <div className="card">
           <h3 style={{ marginTop: 0 }}>So sánh giữa các đơn vị (Toàn tỉnh)</h3>
           <div className="table-wrap">
