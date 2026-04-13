@@ -5,6 +5,7 @@ import userService from '../../../services/api/userService';
 const FORM_LABELS = {
   FORM_1_AWARENESS: 'Mẫu 1: Nhận diện',
   FORM_1_STANDARDS: 'Mẫu 1: Giữ chuẩn',
+  FORM_2: 'Mẫu 2: Hành vi',
   FORM_3: 'Mẫu 3',
   FORM_4: 'Mẫu 4',
   FORM_5: 'Mẫu 5',
@@ -146,62 +147,120 @@ const ProvincialApprovedJournalsPage = () => {
             Mẫu đã duyệt: <strong>{approvedFormText || '-'}</strong>
           </div>
           <div className="review-bento">
-            <div className="review-bento-card">
-              <div className="review-bento-title">Mẫu 1: Nhận diện</div>
-              <div className="review-bento-content">
-                Né điều gì: {selected?.avoidance || '-'}<br />
-                Tự loại gói: {selected?.selfLimit || '-'}<br />
-                Dừng tư vấn sớm: {selected?.earlyStop || '-'}<br />
-                Đổ lỗi: {selected?.blaming || '-'}
+            {selectedApprovedForms.includes('FORM_1_AWARENESS') && (
+              <div className="review-bento-card">
+                <div className="review-bento-title">Mẫu 1: Nhận diện</div>
+                <div className="review-bento-content">
+                  Né điều gì: {selected?.avoidance || '-'}<br />
+                  Tự loại gói: {selected?.selfLimit || '-'}<br />
+                  Dừng tư vấn sớm: {selected?.earlyStop || '-'}<br />
+                  Đổ lỗi: {selected?.blaming || '-'}
+                </div>
               </div>
-            </div>
-            <div className="review-bento-card">
-              <div className="review-bento-title">Mẫu 1: Giữ chuẩn</div>
-              <div className="review-bento-content">
-                Chuẩn đã giữ: {selected?.standardsKeptText || '-'}<br />
-                Dấu hiệu tụt chuẩn: {selected?.backslideSigns || '-'}<br />
-                Cách xử lý: {selected?.solution || '-'}
+            )}
+            {selectedApprovedForms.includes('FORM_1_STANDARDS') && (
+              <div className="review-bento-card">
+                <div className="review-bento-title">Mẫu 1: Giữ chuẩn</div>
+                <div className="review-bento-content">
+                  Chuẩn đã giữ: {selected?.standardsKeptText || '-'}<br />
+                  Dấu hiệu tụt chuẩn: {selected?.backslideSigns || '-'}<br />
+                  Cách xử lý: {selected?.solution || '-'}
+                </div>
               </div>
-            </div>
-            <div className="review-bento-card">
-              <div className="review-bento-title">Mẫu 3</div>
-              <div className="review-bento-content">
-                Suy nghĩ tiêu cực: {extraLogs?.form3?.negativeThought || '-'}<br />
-                Tư duy mới: {extraLogs?.form3?.newMindset || '-'}<br />
-                Hành vi thay đổi: {extraLogs?.form3?.behaviorChange || '-'}
+            )}
+            {selectedApprovedForms.includes('FORM_2') && (
+              <div className="review-bento-card">
+                <div className="review-bento-title">Mẫu 2: Hành vi</div>
+                <div className="review-bento-content">
+                  Số khách gặp: {extraLogs?.form2?.customerMetCount || 0}<br />
+                  Hỏi sâu: {extraLogs?.form2?.askedDeepQuestion ? 'Có' : 'Không'}<br />
+                  Tư vấn đủ: {extraLogs?.form2?.fullConsultation ? 'Có' : 'Không'}<br />
+                  Theo đến cùng: {extraLogs?.form2?.followedThrough ? 'Có' : 'Không'}
+                </div>
               </div>
-            </div>
-            <div className="review-bento-card">
-              <div className="review-bento-title">Mẫu 5</div>
-              <div className="review-bento-content">
-                Bài học ngày mai: {extraLogs?.form5?.tomorrowLesson || '-'}<br />
-                Việc làm khác đi: {extraLogs?.form5?.differentAction || '-'}
+            )}
+            {selectedApprovedForms.includes('FORM_3') && (
+              <div className="review-bento-card">
+                <div className="review-bento-title">Mẫu 3</div>
+                <div className="review-bento-content">
+                  Suy nghĩ tiêu cực: {extraLogs?.form3?.negativeThought || '-'}<br />
+                  Tư duy mới: {extraLogs?.form3?.newMindset || '-'}<br />
+                  Hành vi thay đổi: {extraLogs?.form3?.behaviorChange || '-'}
+                </div>
               </div>
-            </div>
-            <div className="review-bento-card">
-              <div className="review-bento-title">Mẫu 7</div>
-              <div className="review-bento-content">
-                Chuẩn đã giữ: {extraLogs?.form7?.keptStandard || '-'}<br />
-                Dấu hiệu tụt chuẩn: {extraLogs?.form7?.backslideSign || '-'}<br />
-                Cách xử lý: {extraLogs?.form7?.solution || '-'}
+            )}
+            {selectedApprovedForms.includes('FORM_5') && (
+              <div className="review-bento-card">
+                <div className="review-bento-title">Mẫu 5</div>
+                <div className="review-bento-content">
+                  Bài học ngày mai: {extraLogs?.form5?.tomorrowLesson || '-'}<br />
+                  Việc làm khác đi: {extraLogs?.form5?.differentAction || '-'}
+                </div>
               </div>
-            </div>
-            <div className="review-bento-card">
-              <div className="review-bento-title">Mẫu 9</div>
-              <div className="review-bento-content">
-                Tự giới hạn: {extraLogs?.form9?.selfLimitArea || '-'}<br />
-                Hành vi chứng minh: {extraLogs?.form9?.proofBehavior || '-'}<br />
-                Nâng chuẩn: {extraLogs?.form9?.raiseStandard || '-'}<br />
-                Hành động: {extraLogs?.form9?.actionPlan || '-'}
+            )}
+            {selectedApprovedForms.includes('FORM_7') && (
+              <div className="review-bento-card">
+                <div className="review-bento-title">Mẫu 7</div>
+                <div className="review-bento-content">
+                  Chuẩn đã giữ: {extraLogs?.form7?.keptStandard || '-'}<br />
+                  Dấu hiệu tụt chuẩn: {extraLogs?.form7?.backslideSign || '-'}<br />
+                  Cách xử lý: {extraLogs?.form7?.solution || '-'}
+                </div>
               </div>
-            </div>
-            <div className="review-bento-card">
-              <div className="review-bento-title">Mẫu 12</div>
-              <div className="review-bento-content">
-                Tuyên ngôn: {extraLogs?.form12?.declarationText || '-'}<br />
-                Ký tên: {extraLogs?.form12?.commitmentSignature || '-'}
+            )}
+            {selectedApprovedForms.includes('FORM_9') && (
+              <div className="review-bento-card">
+                <div className="review-bento-title">Mẫu 9</div>
+                <div className="review-bento-content">
+                  Tự giới hạn: {extraLogs?.form9?.selfLimitArea || '-'}<br />
+                  Hành vi chứng minh: {extraLogs?.form9?.proofBehavior || '-'}<br />
+                  Nâng chuẩn: {extraLogs?.form9?.raiseStandard || '-'}<br />
+                  Hành động: {extraLogs?.form9?.actionPlan || '-'}
+                </div>
               </div>
-            </div>
+            )}
+            {selectedApprovedForms.includes('FORM_12') && (
+              <div className="review-bento-card">
+                <div className="review-bento-title">Mẫu 12</div>
+                <div className="review-bento-content">
+                  Tuyên ngôn: {extraLogs?.form12?.declarationText || '-'}<br />
+                  Ký tên: {extraLogs?.form12?.commitmentSignature || '-'}
+                </div>
+              </div>
+            )}
+            {selectedApprovedForms.includes('FORM_4') && (
+              <div className="review-bento-card" style={{ gridColumn: '1 / -1' }}>
+                <div className="review-bento-title">Mẫu 4: Nhật ký bán hàng</div>
+                <div className="review-bento-content" style={{ display: 'grid', gap: '8px' }}>
+                  {(extraLogs?.form4 || []).map((row, idx) => (
+                    <div key={idx} style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                      <strong>Dòng {idx + 1} - KH: {row.customerName || '-'}</strong><br />
+                      Vấn đề KH: {row.customerIssue || '-'}<br />
+                      Giải pháp đề xuất: {row.solutionOffered || '-'}<br />
+                      Kết quả: {row.result || '-'}
+                    </div>
+                  ))}
+                  {!(extraLogs?.form4?.length) && 'Không có dữ liệu Mẫu 4'}
+                </div>
+              </div>
+            )}
+            {selectedApprovedForms.includes('FORM_8') && (
+              <div className="review-bento-card" style={{ gridColumn: '1 / -1' }}>
+                <div className="review-bento-title">Mẫu 8: Củng cố niềm tin</div>
+                <div className="review-bento-content" style={{ display: 'grid', gap: '8px' }}>
+                  {(extraLogs?.form8 || []).map((row, idx) => (
+                    <div key={idx} style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                      <strong>Dòng {idx + 1} - Hoàn cảnh: {row.situation || '-'}</strong><br />
+                      Niềm tin cũ: {row.oldBelief || '-'}<br />
+                      Niềm tin mới: {row.newChosenBelief || '-'}<br />
+                      Hành vi mới: {row.newBehavior || '-'}<br />
+                      Kết quả: {row.result || '-'}
+                    </div>
+                  ))}
+                  {!(extraLogs?.form8?.length) && 'Không có dữ liệu Mẫu 8'}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       ) : null}

@@ -93,14 +93,12 @@ const Header = () => {
             Tra cứu nhật ký
           </NavLink>
         ) : null}
-        {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
-          <NavLink
-            to="/discipline/manager-daily-score"
-            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
-          >
-            Chấm điểm ngày
-          </NavLink>
-        ) : null}
+        <NavLink
+          to="/discipline/manager-daily-score"
+          className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+        >
+          {user?.role === 'EMPLOYEE' ? 'Phiếu chấm điểm' : 'Chấm điểm ngày'}
+        </NavLink>
         {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
           <NavLink
             to="/discipline/weekly-report"
@@ -117,12 +115,20 @@ const Header = () => {
             Mẫu đã duyệt
           </NavLink>
         ) : null}
-        {user?.role === 'PROVINCIAL_VIEWER' ? (
+        {(user?.role === 'PROVINCIAL_VIEWER' || user?.role === 'ADMIN') ? (
           <NavLink
             to="/discipline/provincial-statistics"
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
           >
             Thống kê báo cáo
+          </NavLink>
+        ) : null}
+        {(user?.role === 'PROVINCIAL_VIEWER' || user?.role === 'ADMIN') ? (
+          <NavLink
+            to="/discipline/journal-submissions"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Tỷ lệ nhập nhật ký
           </NavLink>
         ) : null}
         {user?.role === 'ADMIN' ? (

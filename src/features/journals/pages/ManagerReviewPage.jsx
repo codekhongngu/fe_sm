@@ -28,16 +28,18 @@ const ManagerReviewPage = () => {
     form9: 'PENDING',
     form12: 'PENDING',
   });
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const today = new Date().toISOString().slice(0, 10);
+  const [fromDate, setFromDate] = useState(today);
+  const [toDate, setToDate] = useState(today);
   const [employeeKeyword, setEmployeeKeyword] = useState('');
+  const [filterStatus, setFilterStatus] = useState('PENDING');
 
   const loadData = async () => {
     setLoading(true);
     setErrorText('');
     try {
       const [pending, weekly] = await Promise.all([
-        evaluationService.getPendingList(),
+        evaluationService.getPendingList(filterStatus),
         evaluationService.getWeeklyAnalytics(),
       ]);
       setPendingJournals(Array.isArray(pending) ? pending : []);
@@ -126,7 +128,7 @@ const ManagerReviewPage = () => {
 
   useEffect(() => {
     loadData();
-  }, [journalId]);
+  }, [journalId, filterStatus]);
 
   const filteredPendingJournals = useMemo(() => {
     return pendingJournals.filter((journal) => {
@@ -204,6 +206,9 @@ const ManagerReviewPage = () => {
         ...payload,
       });
       setStatusText(okText);
+      if (payload.statuses) {
+        setDailyStatuses(prev => ({ ...prev, ...payload.statuses }));
+      }
       await loadData();
     } catch (e) {
       setErrorText(e?.response?.data?.message || 'Thao tác thất bại');
@@ -315,6 +320,7 @@ const ManagerReviewPage = () => {
     if (hasForm8) statuses.form8 = 'APPROVED';
     if (hasForm9) statuses.form9 = 'APPROVED';
     if (hasForm12) statuses.form12 = 'APPROVED';
+    setDailyStatuses(prev => ({ ...prev, ...statuses }));
     return patchReview({ statuses }, 'Đã duyệt tất cả các mẫu hiện có trong ngày');
   };
 
@@ -390,6 +396,15 @@ const ManagerReviewPage = () => {
         <div className="card" style={{ marginBottom: 12 }}>
           <h3 style={{ marginTop: 0 }}>Bộ lọc</h3>
           <div className="filters">
+            <select
+              className="field"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="PENDING">Chờ duyệt</option>
+              <option value="APPROVED">Đã duyệt</option>
+              <option value="ALL">Tất cả</option>
+            </select>
             <input
               type="date"
               className="field"
@@ -412,7 +427,13 @@ const ManagerReviewPage = () => {
         </div>
 
         <section className="card" style={{ marginBottom: 12 }}>
-          <h3 style={{ marginTop: 0 }}>Danh sách hồ sơ chờ đánh giá</h3>
+          <h3 style={{ marginTop: 0 }}>
+            {filterStatus === 'PENDING'
+              ? 'Danh sách hồ sơ chờ đánh giá'
+              : filterStatus === 'APPROVED'
+                ? 'Danh sách hồ sơ đã duyệt'
+                : 'Danh sách tất cả hồ sơ'}
+          </h3>
           <div className="review-pending-row">
             {filteredPendingJournals.map((journal) => (
               <JournalCard key={journal.id} journal={journal} onSelect={chooseJournal} />
@@ -452,7 +473,16 @@ const ManagerReviewPage = () => {
                 <div style={{ display: 'grid', gap: 10 }}>
                 {!!(selected?.avoidance || selected?.selfLimit || selected?.earlyStop || selected?.blaming || selected?.awarenessSubmittedAt) && (
                   <div style={{ border: '1px solid #e5eaef', borderRadius: 8, padding: 10 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 8 }}>Mẫu 1: Nhận diện</div>
+                    <div style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      Mẫu 1: Nhận diện
+                      {dailyStatuses.form1Awareness === 'APPROVED' ? (
+                        <span style={{ fontSize: 11, background: '#dcfce7', color: '#16a34a', padding: '2px 6px', borderRadius: 4 }}>Đã duyệt</span>
+                      ) : dailyStatuses.form1Awareness === 'REJECTED' ? (
+                        <span style={{ fontSize: 11, background: '#fee2e2', color: '#dc2626', padding: '2px 6px', borderRadius: 4 }}>Chưa đạt</span>
+                      ) : (
+                        <span style={{ fontSize: 11, background: '#fef3c7', color: '#ea580c', padding: '2px 6px', borderRadius: 4 }}>Chờ duyệt</span>
+                      )}
+                    </div>
                     <div className="filters" style={{ marginBottom: 8 }}>
                       <div>
                         <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Hôm nay tôi đã né điều gì?</div>
@@ -481,7 +511,16 @@ const ManagerReviewPage = () => {
 
                 {!!(selected?.standardsKeptText || selected?.backslideSigns || selected?.solution || selected?.standardsSubmittedAt) && (
                   <div style={{ border: '1px solid #e5eaef', borderRadius: 8, padding: 10 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 8 }}>Mẫu 1: Giữ chuẩn</div>
+                    <div style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      Mẫu 1: Giữ chuẩn
+                      {dailyStatuses.form1Standards === 'APPROVED' ? (
+                        <span style={{ fontSize: 11, background: '#dcfce7', color: '#16a34a', padding: '2px 6px', borderRadius: 4 }}>Đã duyệt</span>
+                      ) : dailyStatuses.form1Standards === 'REJECTED' ? (
+                        <span style={{ fontSize: 11, background: '#fee2e2', color: '#dc2626', padding: '2px 6px', borderRadius: 4 }}>Chưa đạt</span>
+                      ) : (
+                        <span style={{ fontSize: 11, background: '#fef3c7', color: '#ea580c', padding: '2px 6px', borderRadius: 4 }}>Chờ duyệt</span>
+                      )}
+                    </div>
                     <div className="filters" style={{ marginBottom: 8 }}>
                       <div>
                         <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Hôm nay tôi giữ được chuẩn nào?</div>
@@ -510,27 +549,51 @@ const ManagerReviewPage = () => {
                     <div className="filters" style={{ marginBottom: 8 }}>
                       {hasForm3 && (
                         <>
-                          <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 3 - Suy nghĩ tiêu cực</div><textarea className="field" rows={2} value={selected?.form3OldMindset || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form3OldMindset: e.target.value }))} /></div>
+                          <div>
+                            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              Mẫu 3 - Suy nghĩ tiêu cực
+                              {dailyStatuses.form3 === 'APPROVED' ? <span style={{ fontSize: 10, background: '#dcfce7', color: '#16a34a', padding: '1px 4px', borderRadius: 4 }}>Đã duyệt</span> : dailyStatuses.form3 === 'REJECTED' ? <span style={{ fontSize: 10, background: '#fee2e2', color: '#dc2626', padding: '1px 4px', borderRadius: 4 }}>Chưa đạt</span> : <span style={{ fontSize: 10, background: '#fef3c7', color: '#ea580c', padding: '1px 4px', borderRadius: 4 }}>Chờ duyệt</span>}
+                            </div>
+                            <textarea className="field" rows={2} value={selected?.form3OldMindset || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form3OldMindset: e.target.value }))} />
+                          </div>
                           <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 3 - Tư duy mới</div><textarea className="field" rows={2} value={selected?.form3NewMindset || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form3NewMindset: e.target.value }))} /></div>
                           <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 3 - Hành vi thay đổi</div><textarea className="field" rows={2} value={selected?.form3ActionChange || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form3ActionChange: e.target.value }))} /></div>
                         </>
                       )}
                       {hasForm5 && (
                         <>
-                          <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 5 - Bài học ngày mai</div><textarea className="field" rows={2} value={selected?.form5Lesson || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form5Lesson: e.target.value }))} /></div>
+                          <div>
+                            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              Mẫu 5 - Bài học ngày mai
+                              {dailyStatuses.form5 === 'APPROVED' ? <span style={{ fontSize: 10, background: '#dcfce7', color: '#16a34a', padding: '1px 4px', borderRadius: 4 }}>Đã duyệt</span> : dailyStatuses.form5 === 'REJECTED' ? <span style={{ fontSize: 10, background: '#fee2e2', color: '#dc2626', padding: '1px 4px', borderRadius: 4 }}>Chưa đạt</span> : <span style={{ fontSize: 10, background: '#fef3c7', color: '#ea580c', padding: '1px 4px', borderRadius: 4 }}>Chờ duyệt</span>}
+                            </div>
+                            <textarea className="field" rows={2} value={selected?.form5Lesson || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form5Lesson: e.target.value }))} />
+                          </div>
                           <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 5 - Việc sẽ làm khác đi</div><textarea className="field" rows={2} value={selected?.form5Action || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form5Action: e.target.value }))} /></div>
                         </>
                       )}
                       {hasForm7 && (
                         <>
-                          <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 7 - Chuẩn đã giữ</div><textarea className="field" rows={2} value={selected?.form7KeptStandard || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form7KeptStandard: e.target.value }))} /></div>
+                          <div>
+                            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              Mẫu 7 - Chuẩn đã giữ
+                              {dailyStatuses.form7 === 'APPROVED' ? <span style={{ fontSize: 10, background: '#dcfce7', color: '#16a34a', padding: '1px 4px', borderRadius: 4 }}>Đã duyệt</span> : dailyStatuses.form7 === 'REJECTED' ? <span style={{ fontSize: 10, background: '#fee2e2', color: '#dc2626', padding: '1px 4px', borderRadius: 4 }}>Chưa đạt</span> : <span style={{ fontSize: 10, background: '#fef3c7', color: '#ea580c', padding: '1px 4px', borderRadius: 4 }}>Chờ duyệt</span>}
+                            </div>
+                            <textarea className="field" rows={2} value={selected?.form7KeptStandard || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form7KeptStandard: e.target.value }))} />
+                          </div>
                           <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 7 - Dấu hiệu tụt chuẩn</div><textarea className="field" rows={2} value={selected?.form7BackslideSign || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form7BackslideSign: e.target.value }))} /></div>
                           <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 7 - Cách xử lý</div><textarea className="field" rows={2} value={selected?.form7Solution || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form7Solution: e.target.value }))} /></div>
                         </>
                       )}
                       {hasForm9 && (
                         <>
-                          <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 9 - Tự giới hạn thu nhập</div><textarea className="field" rows={2} value={selected?.form9SelfLimitArea || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form9SelfLimitArea: e.target.value }))} /></div>
+                          <div>
+                            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              Mẫu 9 - Tự giới hạn thu nhập
+                              {dailyStatuses.form9 === 'APPROVED' ? <span style={{ fontSize: 10, background: '#dcfce7', color: '#16a34a', padding: '1px 4px', borderRadius: 4 }}>Đã duyệt</span> : dailyStatuses.form9 === 'REJECTED' ? <span style={{ fontSize: 10, background: '#fee2e2', color: '#dc2626', padding: '1px 4px', borderRadius: 4 }}>Chưa đạt</span> : <span style={{ fontSize: 10, background: '#fef3c7', color: '#ea580c', padding: '1px 4px', borderRadius: 4 }}>Chờ duyệt</span>}
+                            </div>
+                            <textarea className="field" rows={2} value={selected?.form9SelfLimitArea || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form9SelfLimitArea: e.target.value }))} />
+                          </div>
                           <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 9 - Hành vi chứng minh</div><textarea className="field" rows={2} value={selected?.form9ProofBehavior || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form9ProofBehavior: e.target.value }))} /></div>
                           <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 9 - Nâng chuẩn thu nhập</div><textarea className="field" rows={2} value={selected?.form9RaiseStandard || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form9RaiseStandard: e.target.value }))} /></div>
                           <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 9 - Hành động cụ thể</div><textarea className="field" rows={2} value={selected?.form9ActionPlan || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form9ActionPlan: e.target.value }))} /></div>
@@ -538,7 +601,13 @@ const ManagerReviewPage = () => {
                       )}
                       {hasForm12 && (
                         <>
-                          <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 12 - Tuyên ngôn nghề nghiệp</div><textarea className="field" rows={3} value={selected?.form12DeclarationText || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form12DeclarationText: e.target.value }))} /></div>
+                          <div>
+                            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              Mẫu 12 - Tuyên ngôn
+                              {dailyStatuses.form12 === 'APPROVED' ? <span style={{ fontSize: 10, background: '#dcfce7', color: '#16a34a', padding: '1px 4px', borderRadius: 4 }}>Đã duyệt</span> : dailyStatuses.form12 === 'REJECTED' ? <span style={{ fontSize: 10, background: '#fee2e2', color: '#dc2626', padding: '1px 4px', borderRadius: 4 }}>Chưa đạt</span> : <span style={{ fontSize: 10, background: '#fef3c7', color: '#ea580c', padding: '1px 4px', borderRadius: 4 }}>Chờ duyệt</span>}
+                            </div>
+                            <textarea className="field" rows={2} value={selected?.form12DeclarationText || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form12DeclarationText: e.target.value }))} />
+                          </div>
                           <div><div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Mẫu 12 - Ký tên, ngày cam kết</div><input className="field" value={selected?.form12CommitmentSignature || ''} onChange={(e) => setSelected((prev) => ({ ...prev, form12CommitmentSignature: e.target.value }))} /></div>
                         </>
                       )}
@@ -558,7 +627,10 @@ const ManagerReviewPage = () => {
                     <div style={{ fontWeight: 700, marginBottom: 8 }}>Các mẫu eForm bảng dữ liệu</div>
                     {hasForm4 && (
                       <div style={{ marginTop: 12 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: '#1e293b' }}>Mẫu 4: Nhật ký bán hàng</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          Mẫu 4: Nhật ký bán hàng
+                          {dailyStatuses.form4 === 'APPROVED' ? <span style={{ fontSize: 10, background: '#dcfce7', color: '#16a34a', padding: '1px 4px', borderRadius: 4 }}>Đã duyệt</span> : dailyStatuses.form4 === 'REJECTED' ? <span style={{ fontSize: 10, background: '#fee2e2', color: '#dc2626', padding: '1px 4px', borderRadius: 4 }}>Chưa đạt</span> : <span style={{ fontSize: 10, background: '#fef3c7', color: '#ea580c', padding: '1px 4px', borderRadius: 4 }}>Chờ duyệt</span>}
+                        </div>
                         <div style={{ display: 'grid', gap: 12 }}>
                           {(selected?.form4Rows || []).map((row, idx) => (
                             <div key={idx} style={{ border: '1px solid #e5eaef', padding: 12, borderRadius: 8 }}>
@@ -579,7 +651,10 @@ const ManagerReviewPage = () => {
                     )}
                     {hasForm8 && (
                       <div style={{ marginTop: 12 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: '#1e293b' }}>Mẫu 8: Củng cố niềm tin</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          Mẫu 8: Nhật ký chuyển đổi niềm tin
+                          {dailyStatuses.form8 === 'APPROVED' ? <span style={{ fontSize: 10, background: '#dcfce7', color: '#16a34a', padding: '1px 4px', borderRadius: 4 }}>Đã duyệt</span> : dailyStatuses.form8 === 'REJECTED' ? <span style={{ fontSize: 10, background: '#fee2e2', color: '#dc2626', padding: '1px 4px', borderRadius: 4 }}>Chưa đạt</span> : <span style={{ fontSize: 10, background: '#fef3c7', color: '#ea580c', padding: '1px 4px', borderRadius: 4 }}>Chờ duyệt</span>}
+                        </div>
                         <div style={{ display: 'grid', gap: 12 }}>
                           {(selected?.form8Rows || []).map((row, idx) => (
                             <div key={idx} style={{ border: '1px solid #e5eaef', padding: 12, borderRadius: 8 }}>
@@ -618,7 +693,10 @@ const ManagerReviewPage = () => {
 
             {hasForm2 && (
               <div className="card" style={{ marginBottom: '20px' }}>
-                <h3 style={{ marginTop: 0 }}>Thẩm định Mẫu 2: Hành vi</h3>
+                <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Thẩm định Mẫu 2: Hành vi
+                  {selected?.form2Status === 'APPROVED' ? <span style={{ fontSize: 12, background: '#dcfce7', color: '#16a34a', padding: '2px 6px', borderRadius: 4, fontWeight: 500 }}>Đã duyệt</span> : selected?.form2Status === 'REJECTED' ? <span style={{ fontSize: 12, background: '#fee2e2', color: '#dc2626', padding: '2px 6px', borderRadius: 4, fontWeight: 500 }}>Chưa đạt</span> : <span style={{ fontSize: 12, background: '#fef3c7', color: '#ea580c', padding: '2px 6px', borderRadius: 4, fontWeight: 500 }}>Chờ duyệt</span>}
+                </h3>
                 <Form2BehaviorChecklist
                   userRole="MANAGER"
                   journalId={selected.id}

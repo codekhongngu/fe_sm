@@ -14,6 +14,7 @@ const UserManagementPage = () => {
   const [unitName, setUnitName] = useState('');
   const [unitTelegramGroupChatId, setUnitTelegramGroupChatId] = useState('');
   const [parentUnitId, setParentUnitId] = useState('');
+  const [unitExcludeFromStatistics, setUnitExcludeFromStatistics] = useState(false);
   const [editingUnitId, setEditingUnitId] = useState('');
   const [search, setSearch] = useState('');
   const [unitFilter, setUnitFilter] = useState('');
@@ -138,11 +139,13 @@ const UserManagementPage = () => {
         name: unitName,
         telegramGroupChatId: unitTelegramGroupChatId || undefined,
         parentUnitId: parentUnitId || undefined,
+        excludeFromStatistics: unitExcludeFromStatistics,
       });
       setUnitCode('');
       setUnitName('');
       setUnitTelegramGroupChatId('');
       setParentUnitId('');
+      setUnitExcludeFromStatistics(false);
       setStatus('Tạo đơn vị thành công');
       loadData();
     } catch (error) {
@@ -156,6 +159,7 @@ const UserManagementPage = () => {
     setUnitName(unit.name || '');
     setUnitTelegramGroupChatId(unit.telegramGroupChatId || '');
     setParentUnitId(unit.parentUnitId || '');
+    setUnitExcludeFromStatistics(!!unit.excludeFromStatistics);
   };
 
   const saveEditUnit = async () => {
@@ -172,6 +176,7 @@ const UserManagementPage = () => {
         name: unitName,
         telegramGroupChatId: unitTelegramGroupChatId || undefined,
         parentUnitId: parentUnitId || undefined,
+        excludeFromStatistics: unitExcludeFromStatistics,
       });
       setStatus('Cập nhật đơn vị thành công');
       setEditingUnitId('');
@@ -179,6 +184,7 @@ const UserManagementPage = () => {
       setUnitName('');
       setUnitTelegramGroupChatId('');
       setParentUnitId('');
+      setUnitExcludeFromStatistics(false);
       loadData();
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Cập nhật đơn vị thất bại');
@@ -729,6 +735,14 @@ const UserManagementPage = () => {
                   </option>
                 ))}
               </select>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={unitExcludeFromStatistics}
+                  onChange={(e) => setUnitExcludeFromStatistics(e.target.checked)}
+                />
+                Loại trừ đơn vị này khỏi các báo cáo thống kê
+              </label>
               <button className="btn" onClick={editingUnitId ? saveEditUnit : createUnit}>
                 {editingUnitId ? 'Cập nhật đơn vị' : 'Tạo đơn vị'}
               </button>
@@ -741,6 +755,7 @@ const UserManagementPage = () => {
                     setUnitName('');
                     setUnitTelegramGroupChatId('');
                     setParentUnitId('');
+                    setUnitExcludeFromStatistics(false);
                   }}
                 >
                   Hủy sửa
@@ -756,6 +771,7 @@ const UserManagementPage = () => {
                   <th>Tên đơn vị</th>
                   <th>Đơn vị cha</th>
                   <th>Trạng thái</th>
+                  <th>Cấu hình báo cáo</th>
                   <th>Thao tác</th>
                 </tr>
               </thead>
@@ -766,6 +782,13 @@ const UserManagementPage = () => {
                     <td>{unit.name}</td>
                     <td>{unit?.parentUnit?.name || 'Không có'}</td>
                     <td>{unit.isActive ? 'Hoạt động' : 'Ngừng'}</td>
+                    <td>
+                      {unit.excludeFromStatistics ? (
+                        <span className="chip-err">Đã loại trừ</span>
+                      ) : (
+                        <span className="chip-ok">Bình thường</span>
+                      )}
+                    </td>
                     <td>
                       <button
                         className="btn outline"

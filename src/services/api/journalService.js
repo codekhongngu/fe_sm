@@ -24,6 +24,8 @@ const journalService = {
     axiosInstance.post('/api/weekly-journals/submit', payload).then((res) => res.data),
   getApprovedJournals: (params) =>
     axiosInstance.get('/api/manager/journals/approved', { params }).then((res) => res.data),
+  getJournalSubmissionsStats: (date) =>
+    axiosInstance.get('/api/reports/journal-submissions', { params: { date } }).then((res) => res.data),
 };
 
 export default journalService;

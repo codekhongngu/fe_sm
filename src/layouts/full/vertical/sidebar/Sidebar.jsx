@@ -32,6 +32,12 @@ const Sidebar = ({ isOpen, onClose }) => {
             Tra cứu nhật ký
           </NavLink>
         ) : null}
+        <NavLink
+          to="/discipline/manager-daily-score"
+          className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
+        >
+          {user?.role === 'EMPLOYEE' ? 'Phiếu chấm điểm' : 'Chấm điểm ngày'}
+        </NavLink>
         {user?.role === 'ADMIN' ? (
           <NavLink
             to="/system-administration/journey-phase-configs"

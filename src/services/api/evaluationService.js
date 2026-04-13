@@ -12,7 +12,8 @@ const evaluationService = {
     axiosInstance
       .patch(`/evaluations/${journalId}/standards`, payload)
       .then((res) => res.data),
-  getPendingList: () => axiosInstance.get('/evaluations/pending/list').then((res) => res.data),
+  getPendingList: (status) =>
+    axiosInstance.get('/evaluations/pending/list', { params: { status } }).then((res) => res.data),
   getWeeklyAnalytics: () =>
     axiosInstance.get('/evaluations/analytics/weekly').then((res) => res.data),
 };

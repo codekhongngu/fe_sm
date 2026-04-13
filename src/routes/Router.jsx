@@ -14,6 +14,7 @@ import ManagerDailyScorePage from '../features/manager-daily-scores/pages/Manage
 import WeeklyReportPage from '../features/reports/pages/WeeklyReportPage';
 import ProvincialApprovedJournalsPage from '../features/reports/pages/ProvincialApprovedJournalsPage';
 import ProvincialStatisticsPage from '../features/reports/pages/ProvincialStatisticsPage';
+import JournalSubmissionsPage from '../features/reports/pages/JournalSubmissionsPage';
 import UserManagementPage from '../features/system-administration/pages/UserManagement/UserManagementPage';
 import RolePermissionPage from '../features/system-administration/pages/RolePermissionManagement/RolePermissionPage';
 import JourneyPhaseConfigPage from '../features/system-administration/pages/JourneyPhaseConfigPage';
@@ -59,7 +60,7 @@ const Router = () => {
         <Route
           path="discipline/manager-daily-score"
           element={
-            <RoleGuard user={user} roles={['MANAGER', 'ADMIN', 'PROVINCIAL_VIEWER']}>
+            <RoleGuard user={user} roles={['EMPLOYEE', 'MANAGER', 'ADMIN', 'PROVINCIAL_VIEWER']}>
               <ManagerDailyScorePage />
             </RoleGuard>
           }
@@ -85,6 +86,14 @@ const Router = () => {
           element={
             <RoleGuard user={user} roles={['PROVINCIAL_VIEWER', 'ADMIN']}>
               <ProvincialStatisticsPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="discipline/journal-submissions"
+          element={
+            <RoleGuard user={user} roles={['PROVINCIAL_VIEWER', 'ADMIN']}>
+              <JournalSubmissionsPage />
             </RoleGuard>
           }
         />

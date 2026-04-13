@@ -52,6 +52,8 @@ const ManagerDailyScorePage = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [scoreDate, setScoreDate] = useState(todayKey);
   const [scoreMap, setScoreMap] = useState({});
+  const [selfScoreMap, setSelfScoreMap] = useState({});
+  const [employeeNoteMap, setEmployeeNoteMap] = useState({});
   const [fromDate, setFromDate] = useState(todayKey);
   const [toDate, setToDate] = useState(todayKey);
   const [stats, setStats] = useState(null);
@@ -81,6 +83,7 @@ const ManagerDailyScorePage = () => {
     [allCriteria],
   );
   const canEditScore = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+  const canEditEmployeeNote = user?.role === 'EMPLOYEE';
 
   const resolveScoreGuide = (itemCode) => SCORE_GUIDE_BY_ITEM_CODE[itemCode] || 'Theo quy định nội bộ';
 
@@ -149,6 +152,19 @@ const ManagerDailyScorePage = () => {
   };
 
   const loadEmployees = async (keyword = '') => {
+    if (user?.role === 'EMPLOYEE') {
+      setEmployees([
+        {
+          id: user.id || user.sub,
+          fullName: user.fullName || '',
+          username: user.username || '',
+          unitId: user.unitId || '',
+          unitName: user.unitName || '',
+        }
+      ]);
+      setSelectedEmployeeId(user.id || user.sub);
+      return;
+    }
     const data = await managerDailyScoreService.getEmployees(keyword);
     setEmployees(Array.isArray(data) ? data : []);
     if (!selectedEmployeeId && Array.isArray(data) && data.length > 0) {
@@ -167,17 +183,47 @@ const ManagerDailyScorePage = () => {
     }
     const data = await managerDailyScoreService.getEntry(selectedEmployeeId, scoreDate);
     const initialScoreMap = {};
+    const initialSelfScoreMap = {};
+    const initialEmployeeNoteMap = {};
 
     allCriteria.forEach((criterion) => {
       initialScoreMap[criterion.id] = 0;
+      initialSelfScoreMap[criterion.id] = 0;
+      initialEmployeeNoteMap[criterion.id] = '';
     });
 
     const sheetItems = data?.sheet?.items || [];
     sheetItems.forEach((item) => {
       initialScoreMap[item.criteriaId] = Number(item.score || 0);
+      initialSelfScoreMap[item.criteriaId] = Number(item.selfScore || 0);
+      initialEmployeeNoteMap[item.criteriaId] = item.employeeNote || '';
     });
 
     setScoreMap(initialScoreMap);
+    setSelfScoreMap(initialSelfScoreMap);
+    setEmployeeNoteMap(initialEmployeeNoteMap);
+  };
+
+  const handleSelfScoreChange = (criteriaId, value) => {
+    setSelfScoreMap((prev) => {
+      const next = { ...prev, [criteriaId]: value };
+      const customersContactedId = criteriaByItemCode.get(BEHAVIOR_CUSTOMERS_CONTACTED_CODE)?.id;
+      const successfulCareCallsId = criteriaByItemCode.get(BEHAVIOR_SUCCESSFUL_CARE_CALLS_CODE)?.id;
+      if (!customersContactedId || !successfulCareCallsId) {
+        return next;
+      }
+      if (criteriaId === customersContactedId && Number(value) > 0) {
+        next[successfulCareCallsId] = 0;
+      }
+      if (criteriaId === successfulCareCallsId && Number(value) > 0) {
+        next[customersContactedId] = 0;
+      }
+      return next;
+    });
+  };
+
+  const handleEmployeeNoteChange = (criteriaId, value) => {
+    setEmployeeNoteMap((prev) => ({ ...prev, [criteriaId]: value }));
   };
 
   const loadStatistics = async () => {
@@ -257,7 +303,7 @@ const ManagerDailyScorePage = () => {
   }, [criteriaData, fromDate, toDate, selectedEmployeeId]);
 
   const onSave = async () => {
-    if (!canEditScore) {
+    if (!canEditScore && !canEditEmployeeNote) {
       setErrorText('Vai trò hiện tại chỉ có quyền xem thống kê');
       return;
     }
@@ -275,6 +321,8 @@ const ManagerDailyScorePage = () => {
           criteriaId: criterion.id,
           requirementNote: resolveScoreGuide(criterion.itemCode),
           score: Number(scoreMap[criterion.id] || 0),
+          selfScore: Number(selfScoreMap[criterion.id] || 0),
+          employeeNote: String(employeeNoteMap[criterion.id] || ''),
         })),
       };
       await managerDailyScoreService.submitEntry(payload);
@@ -291,9 +339,11 @@ const ManagerDailyScorePage = () => {
     <div className="review-v3-shell">
       <div className="review-v3-main">
         <section className="review-title-block">
-          <h1 style={{ margin: 0 }}>Chấm điểm hằng ngày cho nhân viên</h1>
+          <h1 style={{ margin: 0 }}>{user?.role === 'EMPLOYEE' ? 'Phiếu chấm điểm hằng ngày' : 'Chấm điểm hằng ngày cho nhân viên'}</h1>
           <p style={{ margin: '6px 0 0', color: '#64748b' }}>
-            Quản lý chấm điểm theo tiêu chí, cột yêu cầu hiển thị cách tính điểm theo mẫu.
+            {user?.role === 'EMPLOYEE' 
+              ? 'Nhân viên điền nội dung tự đánh giá vào cột "Nội dung (Nhân viên nhập)" và lưu phiếu.' 
+              : 'Quản lý chấm điểm theo tiêu chí, cột yêu cầu hiển thị cách tính điểm theo mẫu.'}
           </p>
         </section>
 
@@ -304,21 +354,23 @@ const ManagerDailyScorePage = () => {
         <section className="card" style={{ marginBottom: 12 }}>
           <h3 style={{ marginTop: 0 }}>Bộ lọc nhập điểm</h3>
           <div className="manager-daily-score-filter-grid">
-            <div>
-              <div className="review-label">Nhân viên</div>
-              <select
-                className="field"
-                value={selectedEmployeeId}
-                onChange={(e) => setSelectedEmployeeId(e.target.value)}
-              >
-                <option value="">Chọn nhân viên</option>
-                {employees.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.fullName} ({employee.username})
-                  </option>
-                ))}
-              </select>
-            </div>
+            {user?.role !== 'EMPLOYEE' && (
+              <div>
+                <div className="review-label">Nhân viên</div>
+                <select
+                  className="field"
+                  value={selectedEmployeeId}
+                  onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                >
+                  <option value="">Chọn nhân viên</option>
+                  {employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.fullName} ({employee.username})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <div className="review-label">Ngày chấm điểm</div>
               <input
@@ -328,31 +380,33 @@ const ManagerDailyScorePage = () => {
                 onChange={(e) => setScoreDate(e.target.value)}
               />
             </div>
-            <div>
-              <div className="review-label">Tìm nhân viên</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  className="field"
-                  value={employeeKeyword}
-                  onChange={(e) => setEmployeeKeyword(e.target.value)}
-                  placeholder="Tên hoặc username"
-                />
-                <button
-                  type="button"
-                  className="btn outline"
-                  onClick={() => loadEmployees(employeeKeyword)}
-                >
-                  Lọc
-                </button>
+            {user?.role !== 'EMPLOYEE' && (
+              <div>
+                <div className="review-label">Tìm nhân viên</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    className="field"
+                    value={employeeKeyword}
+                    onChange={(e) => setEmployeeKeyword(e.target.value)}
+                    placeholder="Tên hoặc username"
+                  />
+                  <button
+                    type="button"
+                    className="btn outline"
+                    onClick={() => loadEmployees(employeeKeyword)}
+                  >
+                    Lọc
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <div style={{ marginTop: 8, color: '#334155' }}>
             Nhân viên đang chọn: <strong>{selectedEmployee?.fullName || '-'}</strong> | Đơn vị:{' '}
-            <strong>{selectedEmployee?.unitName || '-'}</strong> | Tổng điểm hiện tại:{' '}
-            <strong>
-              {currentTotalScore}/100
-            </strong>
+            <strong>{selectedEmployee?.unitName || '-'}</strong>
+            {user?.role !== 'EMPLOYEE' && (
+              <> | Tổng điểm hiện tại: <strong>{currentTotalScore}/100</strong></>
+            )}
           </div>
         </section>
 
@@ -364,18 +418,25 @@ const ManagerDailyScorePage = () => {
                 key={section.sectionCode}
                 section={section}
                 scoreMap={scoreMap}
+                selfScoreMap={selfScoreMap}
+                employeeNoteMap={employeeNoteMap}
                 resolveScoreGuide={resolveScoreGuide}
                 onChangeScore={handleScoreChange}
-                readOnly={!canEditScore}
+                onChangeSelfScore={handleSelfScoreChange}
+                onChangeEmployeeNote={handleEmployeeNoteChange}
+                canEditScore={canEditScore}
+                canEditEmployeeNote={canEditEmployeeNote}
               />
             ))}
           </div>
           <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ color: '#334155' }}>
-              Tổng điểm: <strong>{currentTotalScore}</strong>
+              {user?.role !== 'EMPLOYEE' && (
+                <>Tổng điểm: <strong>{currentTotalScore}</strong></>
+              )}
             </div>
-            <button type="button" className="btn" onClick={onSave} disabled={saving || !canEditScore}>
-              {saving ? 'Đang lưu...' : canEditScore ? 'Lưu phiếu chấm điểm' : 'Chỉ xem thống kê'}
+            <button type="button" className="btn" onClick={onSave} disabled={saving || (!canEditScore && !canEditEmployeeNote)}>
+              {saving ? 'Đang lưu...' : (canEditScore || canEditEmployeeNote) ? 'Lưu phiếu' : 'Chỉ xem thống kê'}
             </button>
           </div>
         </section>
@@ -436,7 +497,9 @@ const ManagerDailyScorePage = () => {
                     <td>{row.employee?.fullName || '-'}</td>
                     <td>{row.scoreDate || '-'}</td>
                     {allCriteria.map((criterion) => (
-                      <td key={criterion.id}>{Number(row.scoresByItemCode?.[criterion.itemCode] || 0)}</td>
+                      <td key={criterion.id}>
+                        {Number(row.scoresByItemCode?.[criterion.itemCode] || 0)}
+                      </td>
                     ))}
                     {(criteriaData?.sections || []).map((section) => (
                       <td key={section.sectionCode}>
@@ -471,9 +534,14 @@ const ManagerDailyScorePage = () => {
 const FragmentSection = ({
   section,
   scoreMap,
+  selfScoreMap,
+  employeeNoteMap,
   resolveScoreGuide,
   onChangeScore,
-  readOnly,
+  onChangeSelfScore,
+  onChangeEmployeeNote,
+  canEditScore,
+  canEditEmployeeNote,
 }) => {
   return (
     <div className="manager-daily-score-section">
@@ -487,19 +555,39 @@ const FragmentSection = ({
           <div className="manager-daily-score-col guide">
             <div className="manager-daily-score-guide-box">{resolveScoreGuide(item.itemCode)}</div>
           </div>
+          <div className="manager-daily-score-col note">
+            <textarea
+              className="field"
+              style={{ width: '100%', height: '100%', minHeight: 72, resize: 'vertical' }}
+              value={employeeNoteMap[item.id] || ''}
+              onChange={(e) => onChangeEmployeeNote(item.id, e.target.value)}
+              disabled={!canEditEmployeeNote}
+              placeholder="Nhân viên nhập nội dung..."
+            />
+          </div>
           <div className="manager-daily-score-col score">
+            <div style={{ marginBottom: 4, fontSize: 12, fontWeight: 600 }}>Tự đánh giá</div>
+            <input
+              type="number"
+              min={0}
+              max={Number(item.maxScore || 0)}
+              className="field"
+              value={Number(selfScoreMap[item.id] ?? 0)}
+              disabled={!canEditEmployeeNote}
+              onChange={(e) => onChangeSelfScore(item.id, Number(e.target.value || 0))}
+            />
+          </div>
+          <div className="manager-daily-score-col score">
+            <div style={{ marginBottom: 4, fontSize: 12, fontWeight: 600 }}>Thẩm định</div>
             <input
               type="number"
               min={0}
               max={Number(item.maxScore || 0)}
               className="field"
               value={Number(scoreMap[item.id] ?? 0)}
-              disabled={readOnly}
+              disabled={!canEditScore}
               onChange={(e) => onChangeScore(item.id, Number(e.target.value || 0))}
             />
-            <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>
-              Tối đa {Number(item.maxScore || 0)}
-            </div>
           </div>
         </div>
       ))}
