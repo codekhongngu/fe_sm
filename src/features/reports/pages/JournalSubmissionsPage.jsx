@@ -32,10 +32,10 @@ const JournalSubmissionsPage = () => {
 
     stats.units.forEach(unit => {
       unit.submittedUsers?.forEach(user => {
-        rows.push([unit.name, user.fullName || user.username, date, 'Đã nhập']);
+        rows.push([unit.unitName, user.fullName || user.username, date, 'Đã nhập']);
       });
       unit.notSubmittedUsers?.forEach(user => {
-        rows.push([unit.name, user.fullName || user.username, date, 'Chưa nhập']);
+        rows.push([unit.unitName, user.fullName || user.username, date, 'Chưa nhập']);
       });
     });
 
