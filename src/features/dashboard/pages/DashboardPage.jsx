@@ -258,7 +258,7 @@ const DashboardPage = () => {
             </div>
           </div>
         </div>
-        <div className="cards-grid" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
+        <div className="cards-grid employee-dashboard-grid">
           <div className="card">
             <h3 style={{ marginTop: 0 }}>Mức độ nộp nhật ký 7 ngày gần nhất</h3>
             <ResponsiveContainer width="100%" height={260}>
@@ -415,7 +415,7 @@ const DashboardPage = () => {
           </div>
         </div>
       ) : (
-        <div className="cards-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+        <div className="cards-grid">
           <div className="card" style={{ minHeight: 340 }}>
             <h3 style={{ marginTop: 0 }}>So sánh chỉ số hành vi</h3>
             <ResponsiveContainer width="100%" height={280}>

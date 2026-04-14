@@ -23,6 +23,32 @@ const JournalSubmissionsPage = () => {
     }
   };
 
+  const exportExcel = () => {
+    if (!stats || !stats.units) return;
+
+    const rows = [
+      ['Tên đơn vị', 'Tên nhân viên', 'Ngày thực hiện', 'Trạng thái'],
+    ];
+
+    stats.units.forEach(unit => {
+      unit.submittedUsers?.forEach(user => {
+        rows.push([unit.name, user.fullName || user.username, date, 'Đã nhập']);
+      });
+      unit.notSubmittedUsers?.forEach(user => {
+        rows.push([unit.name, user.fullName || user.username, date, 'Chưa nhập']);
+      });
+    });
+
+    const csv = rows.map((row) => row.map((col) => `"${String(col || '')}"`).join(',')).join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `thong-ke-nhat-ky-${date}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,9 +78,12 @@ const JournalSubmissionsPage = () => {
               onChange={(e) => setDate(e.target.value)}
             />
           </div>
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 20, display: 'flex', gap: '8px' }}>
             <button className="btn" onClick={load} disabled={loading}>
               {loading ? 'Đang tải...' : 'Lọc'}
+            </button>
+            <button className="btn outline" onClick={exportExcel} disabled={loading || !stats}>
+              Xuất Excel
             </button>
           </div>
         </div>

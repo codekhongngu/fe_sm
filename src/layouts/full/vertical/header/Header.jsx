@@ -90,7 +90,15 @@ const Header = () => {
             to="/discipline/manager-review"
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
           >
-            Tra cứu nhật ký
+            Tra cứu nhật ký ngày
+          </NavLink>
+        ) : null}
+        {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+          <NavLink
+            to="/discipline/manager-weekly-review"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Tra cứu nhật ký tuần
           </NavLink>
         ) : null}
         <NavLink
@@ -137,6 +145,14 @@ const Header = () => {
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
           >
             Cấu hình giai đoạn
+          </NavLink>
+        ) : null}
+        {user?.role === 'ADMIN' ? (
+          <NavLink
+            to="/system-administration/system-configs"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Cấu hình hệ thống
           </NavLink>
         ) : null}
         {user?.role === 'ADMIN' ? (

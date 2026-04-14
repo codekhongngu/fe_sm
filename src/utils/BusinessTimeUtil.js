@@ -1,0 +1,48 @@
+export class BusinessTimeUtil {
+  static CUTOFF_HOUR = 7;
+
+  /**
+   * Tính toán Ngày Nghiệp Vụ dựa trên mốc Cut-off 07:00 AM
+   */
+  static getEffectiveBusinessDate(systemTime = new Date()) {
+    const time = new Date(systemTime);
+    
+    const isDateOnlyString = typeof systemTime === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(systemTime);
+
+    if (!isDateOnlyString && time.getHours() < this.CUTOFF_HOUR) {
+      time.setDate(time.getDate() - 1);
+    }
+    time.setHours(0, 0, 0, 0);
+    // Return an object that has a toDate() method to be compatible with previous usage, 
+    // or just return the Date object and we can use it directly
+    return {
+      toDate: () => time,
+      day: () => time.getDay(),
+      format: (fmt) => {
+        const y = time.getFullYear();
+        const m = String(time.getMonth() + 1).padStart(2, '0');
+        const d = String(time.getDate()).padStart(2, '0');
+        if (fmt === 'YYYY-MM-DD') return `${y}-${m}-${d}`;
+        return time.toISOString();
+      }
+    };
+  }
+
+  /**
+   * Kiểm tra xem Ngày Nghiệp Vụ có rơi vào Cuối tuần (Thứ 7, Chủ Nhật) hay không
+   */
+  static isWeekendLocked(systemTime = new Date()) {
+    const businessDate = this.getEffectiveBusinessDate(systemTime);
+    const dayOfWeek = businessDate.day(); 
+    // 0: Chủ Nhật, 6: Thứ Bảy
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  }
+
+  /**
+   * Kiểm tra xem có phải là Thứ Hai - Ngày được phép cộng dồn dữ liệu cuối tuần không
+   */
+  static isAccumulationDay(systemTime = new Date()) {
+    const businessDate = this.getEffectiveBusinessDate(systemTime);
+    return businessDate.day() === 1; // 1: Thứ Hai
+  }
+}

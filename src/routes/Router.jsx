@@ -10,6 +10,7 @@ import CatalogPage from '../features/catalogs/pages/CatalogPage';
 import Journey90Page from '../features/journals/pages/Journey90Page';
 import WeeklyJournalPage from '../features/journals/pages/WeeklyJournalPage';
 import ManagerReviewPage from '../features/journals/pages/ManagerReviewPage';
+import ManagerWeeklyReviewPage from '../features/journals/pages/ManagerWeeklyReviewPage';
 import ManagerDailyScorePage from '../features/manager-daily-scores/pages/ManagerDailyScorePage';
 import WeeklyReportPage from '../features/reports/pages/WeeklyReportPage';
 import ProvincialApprovedJournalsPage from '../features/reports/pages/ProvincialApprovedJournalsPage';
@@ -19,6 +20,7 @@ import UserManagementPage from '../features/system-administration/pages/UserMana
 import RolePermissionPage from '../features/system-administration/pages/RolePermissionManagement/RolePermissionPage';
 import JourneyPhaseConfigPage from '../features/system-administration/pages/JourneyPhaseConfigPage';
 import LoginHistoryPage from '../features/system-administration/pages/LoginHistoryPage';
+import SystemConfigPage from '../features/system-administration/pages/SystemConfigPage';
 import { selectAuth } from '../store/auth/AuthSlice';
 
 const Router = () => {
@@ -54,6 +56,14 @@ const Router = () => {
           element={
             <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>
               <ManagerReviewPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="discipline/manager-weekly-review"
+          element={
+            <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>
+              <ManagerWeeklyReviewPage />
             </RoleGuard>
           }
         />
@@ -134,6 +144,14 @@ const Router = () => {
           element={
             <RoleGuard user={user} roles={['ADMIN']}>
               <LoginHistoryPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="system-administration/system-configs"
+          element={
+            <RoleGuard user={user} roles={['ADMIN']}>
+              <SystemConfigPage />
             </RoleGuard>
           }
         />

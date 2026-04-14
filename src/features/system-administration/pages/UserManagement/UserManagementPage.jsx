@@ -487,7 +487,7 @@ const UserManagementPage = () => {
         <>
           <div className="card" style={{ marginBottom: 12 }}>
             <h3 style={{ marginTop: 0 }}>Thêm người dùng</h3>
-            <div className="filters" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+            <div className="filters">
               <input
                 className="field"
                 placeholder="Họ tên"
@@ -553,7 +553,7 @@ const UserManagementPage = () => {
           {editingUserId ? (
             <div className="card" style={{ marginBottom: 12 }}>
               <h3 style={{ marginTop: 0 }}>Cập nhật người dùng</h3>
-              <div className="filters" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+              <div className="filters">
                 <input
                   className="field"
                   placeholder="Họ tên"
@@ -887,7 +887,7 @@ const UserManagementPage = () => {
         <>
           <div className="card" style={{ marginBottom: 12 }}>
             <h3 style={{ marginTop: 0 }}>Danh mục manager_daily_score_criteria</h3>
-            <div className="filters" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+            <div className="filters">
               <input
                 className="field"
                 placeholder="sectionCode"

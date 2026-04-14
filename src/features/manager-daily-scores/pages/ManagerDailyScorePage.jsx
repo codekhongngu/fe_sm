@@ -3,12 +3,10 @@ import { useSelector } from 'react-redux';
 import managerDailyScoreService from '../../../services/api/managerDailyScoreService';
 import { selectAuth } from '../../../store/auth/AuthSlice';
 
+import { BusinessTimeUtil } from '../../../utils/BusinessTimeUtil';
+
 const getEffectiveTodayKey = () => {
-  const d = new Date();
-  if (d.getHours() < 7) {
-    d.setDate(d.getDate() - 1);
-  }
-  return d.toISOString().slice(0, 10);
+  return BusinessTimeUtil.getEffectiveBusinessDate().format('YYYY-MM-DD');
 };
 
 const todayKey = getEffectiveTodayKey();

@@ -228,8 +228,9 @@ a {
 
 .filters {
   display: grid;
-  grid-template-columns: 1fr 250px 180px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 10px;
+  align-items: center;
 }
 
 .table-wrap {
@@ -959,7 +960,7 @@ textarea.field {
 
 .review-pending-row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 8px;
 }
 
@@ -1053,7 +1054,48 @@ textarea.field {
 .review-bento-content {
   color: #334155;
   line-height: 1.5;
+  white-space: pre-wrap;
   font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .review-layout {
+    grid-template-columns: 1fr;
+  }
+  .review-side-list {
+    max-height: 300px;
+  }
+  .review-info-grid {
+    grid-template-columns: 1fr;
+  }
+  .review-bento {
+    grid-template-columns: 1fr;
+  }
+  .page-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .table-wrap {
+    overflow-x: auto;
+  }
+  .employee-dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .eval-row {
+    grid-template-columns: 1fr;
+  }
+  .manager-daily-score-filter-grid {
+    grid-template-columns: 1fr;
+  }
+  .manager-daily-score-section {
+    overflow-x: hidden;
+  }
+}
+
+@media (min-width: 769px) {
+  .employee-dashboard-grid {
+    grid-template-columns: 1.4fr 1fr !important;
+  }
 }
 
 .review-section {

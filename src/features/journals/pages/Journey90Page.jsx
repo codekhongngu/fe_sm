@@ -43,14 +43,12 @@ const normalizeText = (value) =>
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
+import { BusinessTimeUtil } from '../../../utils/BusinessTimeUtil';
+
 const formatDisplayText = (value, fallback = '-') => normalizeText(value) || fallback;
 
 const getEffectiveToday = () => {
-  const d = new Date();
-  if (d.getHours() < 7) {
-    d.setDate(d.getDate() - 1);
-  }
-  return d;
+  return BusinessTimeUtil.getEffectiveBusinessDate().toDate();
 };
 
 const getStartOfWeek = (date) => {
@@ -115,25 +113,40 @@ const Journey90Page = () => {
     form12CommitmentSignature: '',
   });
   const [submitting, setSubmitting] = useState(false);
-  const [sharedForms, setSharedForms] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('sharedForms') || '{}');
-    } catch {
-      return {};
-    }
-  });
-
-  const markFormShared = (formType) => {
-    const newShared = { ...sharedForms, [`${todayKey}_${formType}`]: true };
-    setSharedForms(newShared);
-    localStorage.setItem('sharedForms', JSON.stringify(newShared));
-  };
 
   const isFormShared = (formType) => {
-    return !!sharedForms[`${todayKey}_${formType}`];
+    if (!todayJournal) return false;
+    
+    // Check shared status from DB response
+    if (formType === 'awareness' && todayJournal.awarenessShared) return true;
+    if (formType === 'standards' && todayJournal.standardsShared) return true;
+    if (formType === 'behavior' && extraLogs?.form2?.isShared) return true;
+    if (formType === 'form3' && extraLogs?.form3?.isShared) return true;
+    if (formType === 'form4' && Array.isArray(extraLogs?.form4) && extraLogs.form4[0]?.isShared) return true;
+    if (formType === 'form5' && extraLogs?.form5?.isShared) return true;
+    if (formType === 'form7' && extraLogs?.form7?.isShared) return true;
+    if (formType === 'form8' && Array.isArray(extraLogs?.form8) && extraLogs.form8[0]?.isShared) return true;
+    if (formType === 'form9' && extraLogs?.form9?.isShared) return true;
+    if (formType === 'form12' && extraLogs?.form12?.isShared) return true;
+    
+    return false;
   };
 
   const getFormStatus = (formType, defaultStatus) => {
+    // Nếu quản lý đã duyệt (status = APPROVED) -> khóa
+    let reviewStatus = 'PENDING';
+    if (formType === 'awareness') reviewStatus = extraLogs?.reviews?.FORM_1_AWARENESS?.status;
+    if (formType === 'standards') reviewStatus = extraLogs?.reviews?.FORM_1_STANDARDS?.status;
+    if (formType === 'behavior') reviewStatus = extraLogs?.reviews?.FORM_2?.status;
+    if (formType === 'form3') reviewStatus = extraLogs?.reviews?.FORM_3?.status;
+    if (formType === 'form4') reviewStatus = extraLogs?.reviews?.FORM_4?.status;
+    if (formType === 'form5') reviewStatus = extraLogs?.reviews?.FORM_5?.status;
+    if (formType === 'form7') reviewStatus = extraLogs?.reviews?.FORM_7?.status;
+    if (formType === 'form8') reviewStatus = extraLogs?.reviews?.FORM_8?.status;
+    if (formType === 'form9') reviewStatus = extraLogs?.reviews?.FORM_9?.status;
+    if (formType === 'form12') reviewStatus = extraLogs?.reviews?.FORM_12?.status;
+
+    if (reviewStatus === 'APPROVED') return 'APPROVED';
     if (isFormShared(formType)) return 'APPROVED'; // Coi như khóa (read-only) nếu đã share
     return defaultStatus;
   };
@@ -161,7 +174,10 @@ const Journey90Page = () => {
       setJournalsByDate(map);
       setSelectedDateKey(toDateKey(getEffectiveToday()));
     } catch (error) {
-      setErrorText(error?.response?.data?.message || 'Không tải được lịch sử nhật ký');
+      const msg = error?.response?.data?.message;
+      if (msg !== 'Forbidden resource') {
+        setErrorText(msg || 'Không tải được lịch sử nhật ký');
+      }
     } finally {
       setLoading(false);
     }
@@ -199,7 +215,10 @@ const Journey90Page = () => {
         const detail = await journalService.getById(selected.id);
         setSelectedJournal(detail);
       } catch (error) {
-        setErrorText(error?.response?.data?.message || 'Không tải được chi tiết ngày');
+        const msg = error?.response?.data?.message;
+        if (msg !== 'Forbidden resource') {
+          setErrorText(msg || 'Không tải được chi tiết ngày');
+        }
       }
     };
     if (selectedDateKey) {
@@ -357,7 +376,10 @@ const Journey90Page = () => {
         setInfoText(successMsg);
       }
     } catch (error) {
-      setErrorText(error?.response?.data?.message || 'Nộp biểu mẫu thất bại');
+      const msg = error?.response?.data?.message;
+      if (msg !== 'Forbidden resource') {
+        setErrorText(msg || 'Nộp biểu mẫu thất bại');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -396,7 +418,10 @@ const Journey90Page = () => {
         setInfoText('Đã lưu nhật ký giữ chuẩn thu nhập cao thành công');
       }
     } catch (error) {
-      setErrorText(error?.response?.data?.message || 'Nộp nhật ký thất bại');
+      const msg = error?.response?.data?.message;
+      if (msg !== 'Forbidden resource') {
+        setErrorText(msg || 'Nộp nhật ký thất bại');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -521,7 +546,13 @@ const Journey90Page = () => {
         logDate: todayKey,
         detailUrl
       });
-      markFormShared(shareKey);
+      // Tải lại để lấy cờ shared mới nhất từ server
+      await loadJournals();
+      if (selectedDateKey) {
+        journalService.getLogsHistory(null, selectedDateKey).then(res => {
+          setExtraLogs(res || {});
+        }).catch(e => console.error(e));
+      }
       setInfoText(`Đã gửi thông báo Telegram cho ${formName} thành công và khóa form.`);
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Gửi thông báo Telegram thất bại. Vui lòng kiểm tra cấu hình Bot của đơn vị.');
@@ -591,7 +622,10 @@ const Journey90Page = () => {
         form12CommitmentSignature: extraLogsData?.form12?.commitmentSignature || '',
       });
     } catch (error) {
-      setErrorText(error?.response?.data?.message || 'Không tải được dữ liệu hôm nay');
+      const msg = error?.response?.data?.message;
+      if (msg !== 'Forbidden resource') {
+        setErrorText(msg || 'Không tải được dữ liệu hôm nay');
+      }
     }
   };
 
@@ -622,7 +656,10 @@ const Journey90Page = () => {
         }
         await loadJournals();
       } catch (error) {
-        setErrorText(error?.response?.data?.message || 'Lưu nhật ký nhận diện hàng ngày thất bại');
+        const msg = error?.response?.data?.message;
+        if (msg !== 'Forbidden resource') {
+          setErrorText(msg || 'Lưu nhật ký nhận diện hàng ngày thất bại');
+        }
       }
     };
     run();
@@ -697,6 +734,21 @@ const Journey90Page = () => {
                   Đóng
                 </button>
               </div>
+
+              {BusinessTimeUtil.isWeekendLocked() ? (
+                <div style={{ padding: '20px', background: '#fff3cd', color: '#92400e', borderRadius: '12px', border: '1px solid #fde68a', marginBottom: '20px' }}>
+                  <h3 style={{ marginTop: 0 }}>Cuối tuần nghỉ ngơi!</h3>
+                  <p>Hệ thống hiện đang khóa chức năng nộp nhật ký. Dữ liệu bán hàng/tương tác phát sinh trong Thứ 7, Chủ Nhật vui lòng cộng dồn và khai báo vào Thứ Hai tuần sau nhé.</p>
+                </div>
+              ) : (
+                <>
+                  {BusinessTimeUtil.isAccumulationDay() && (
+                    <div style={{ padding: '12px 16px', background: '#e0f2fe', color: '#0369a1', borderRadius: '8px', border: '1px solid #bae6fd', marginBottom: '16px', fontSize: '14px' }}>
+                      💡 <strong>Ghi chú Thứ Hai:</strong> Bạn có thể cộng dồn các số liệu phát sinh của Thứ 7 và Chủ Nhật vào tờ khai ngày hôm nay.
+                    </div>
+                  )}
+                  {infoText && <div className="status-ok" style={{ marginBottom: 14 }}>{infoText}</div>}
+                  {errorText && <div className="status-err" style={{ marginBottom: 14 }}>{errorText}</div>}
 
               <div className="journey-eform-tabs" style={{ flexWrap: 'wrap', gap: '8px', paddingBottom: '8px' }}>
                 {availableForms.includes('awareness') && (
@@ -837,14 +889,14 @@ const Journey90Page = () => {
                   <div className="journey-eform-card">
                     <div className="journey-eform-card-head">
                       <span className="journey-eform-no">04</span>
-                      <span>Tại sao tôi không bán được dịch vụ?</span>
+                      <span>Khi không bán được dịch vụ anh chị thường đỗ lỗi cho vấn đề gì?</span>
                     </div>
                     <div className="journey-eform-hint">
                       {/* Gợi ý: Trung thực để nhận diện nguyên nhân gốc, thay vì đổ lỗi. */}
                     </div>
                     <textarea
                       className="field journey-eform-textarea"
-                      placeholder="Vui lòng nhập lý do tôi không bán được dịch vụ."
+                      placeholder="Vui lòng nhập lý do khi không bán được dịch vụ anh chị thường đỗ lỗi cho vấn đề gì."
                       rows={4}
                       value={form.blaming}
                       onChange={(e) => setForm((prev) => ({ ...prev, blaming: e.target.value }))}
@@ -1202,6 +1254,8 @@ const Journey90Page = () => {
                   )}
                 </div>
               )}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -1391,13 +1445,29 @@ const Journey90Page = () => {
           {selectedJournal || extraLogs?.form2 || extraLogs?.form3 || extraLogs?.form4 || extraLogs?.form5 || extraLogs?.form7 || extraLogs?.form8 || extraLogs?.form9 || extraLogs?.form12 ? (
             <div className="journey-compare">
               <div className="journey-column">
-                <h4>Nhật ký nhận diện hằng ngày</h4>
-                <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
-                  <li>Hôm nay tôi đã né điều gì: {formatDisplayText(selectedJournal?.avoidance)}</li>
-                  <li>Tôi có tự loại gói nào không: {formatDisplayText(selectedJournal?.selfLimit)}</li>
-                  <li>Tôi đã dừng tư vấn sớm ở điểm nào: {formatDisplayText(selectedJournal?.earlyStop)}</li>
-                  <li>Khi không bán được dịch vụ anh chị thường đỗ lỗi cho vấn đề gì: {formatDisplayText(selectedJournal?.blaming)}</li>
-                </ul>
+                {(selectedJournal?.avoidance || availableForms.includes('awareness')) && (
+                  <>
+                    <h4>Mẫu 1: Nhật ký nhận diện hằng ngày</h4>
+                    <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
+                      <li>Hôm nay tôi đã né điều gì: {formatDisplayText(selectedJournal?.avoidance)}</li>
+                      <li>Tôi có tự loại gói nào không: {formatDisplayText(selectedJournal?.selfLimit)}</li>
+                      <li>Tôi đã dừng tư vấn sớm ở điểm nào: {formatDisplayText(selectedJournal?.earlyStop)}</li>
+                      <li>Khi không bán được dịch vụ anh chị thường đỗ lỗi cho vấn đề gì: {formatDisplayText(selectedJournal?.blaming)}</li>
+                    </ul>
+                  </>
+                )}
+
+                {(extraLogs?.form2 || availableForms.includes('behavior')) && (
+                  <div style={{ marginTop: 14 }}>
+                    <strong>Mẫu 2: Hành vi</strong>
+                    <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
+                      <li>Số KH đã gặp: {extraLogs?.form2?.customersMet || 0}</li>
+                      <li>Hỏi sâu hơn: {extraLogs?.form2?.deepInquiry ? 'Đã thực hiện' : 'Chưa thực hiện'}</li>
+                      <li>Đề xuất đầy đủ: {extraLogs?.form2?.fullConsult ? 'Đã thực hiện' : 'Chưa thực hiện'}</li>
+                      <li>Theo đến quyết: {extraLogs?.form2?.persistence ? 'Đã thực hiện' : 'Chưa thực hiện'}</li>
+                    </ul>
+                  </div>
+                )}
                 {/* <div style={{ marginTop: 14 }}>
                   <strong>Nhật ký giữ chuẩn thu nhập cao</strong>
                   <strong>Hôm nay tôi giữ được chuẩn nào</strong>
@@ -1418,89 +1488,97 @@ const Journey90Page = () => {
                   </div>
                 </div> */}
 
-                {extraLogs?.form3 && (
+                {(extraLogs?.form3 || availableForms.includes('form3')) && (
                   <div style={{ marginTop: 14 }}>
                     <strong>Mẫu 3: Thay đổi Tư duy</strong>
                     <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
-                      <li>Suy nghĩ tiêu cực: {formatDisplayText(extraLogs.form3.negativeThought)}</li>
-                      <li>Tư duy mới: {formatDisplayText(extraLogs.form3.newMindset)}</li>
-                      <li>Hành vi thay đổi: {formatDisplayText(extraLogs.form3.behaviorChange)}</li>
+                      <li>Suy nghĩ tiêu cực: {formatDisplayText(extraLogs?.form3?.negativeThought)}</li>
+                      <li>Tư duy mới: {formatDisplayText(extraLogs?.form3?.newMindset)}</li>
+                      <li>Hành vi thay đổi: {formatDisplayText(extraLogs?.form3?.behaviorChange)}</li>
                     </ul>
                   </div>
                 )}
 
-                {Array.isArray(extraLogs?.form4) && extraLogs.form4.length > 0 && (
+                {((Array.isArray(extraLogs?.form4) && extraLogs.form4.length > 0) || availableForms.includes('form4')) && (
                   <div style={{ marginTop: 14 }}>
                     <strong>Mẫu 4: Báo cáo Bán hàng</strong>
-                    {extraLogs.form4.map((item, idx) => (
-                      <ul key={`f4-${idx}`} style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
-                        <li>Dòng {idx + 1} - Tên KH: {formatDisplayText(item.customerName)}</li>
-                        <li>Vấn đề: {formatDisplayText(item.customerIssue)}</li>
-                        <li>Hệ quả: {formatDisplayText(item.consequence)}</li>
-                        <li>Giải pháp: {formatDisplayText(item.solutionOffered)}</li>
-                        <li>Giá trị: {formatDisplayText(item.valueBasedPricing)}</li>
-                        <li>Kết quả: {formatDisplayText(item.result)}</li>
-                      </ul>
-                    ))}
+                    {Array.isArray(extraLogs?.form4) && extraLogs.form4.length > 0 ? (
+                      extraLogs.form4.map((item, idx) => (
+                        <ul key={`f4-${idx}`} style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
+                          <li>Dòng {idx + 1} - Tên KH: {formatDisplayText(item.customerName)}</li>
+                          <li>Vấn đề: {formatDisplayText(item.customerIssue)}</li>
+                          <li>Hệ quả: {formatDisplayText(item.consequence)}</li>
+                          <li>Giải pháp: {formatDisplayText(item.solutionOffered)}</li>
+                          <li>Giá trị: {formatDisplayText(item.valueBasedPricing)}</li>
+                          <li>Kết quả: {formatDisplayText(item.result)}</li>
+                        </ul>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: 13, marginTop: 4, color: '#64748b' }}>Chưa nhập</div>
+                    )}
                   </div>
                 )}
 
-                {extraLogs?.form5 && (
+                {(extraLogs?.form5 || availableForms.includes('form5')) && (
                   <div style={{ marginTop: 14 }}>
                     <strong>Mẫu 5: Ghi chép cuối ngày</strong>
                     <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
-                      <li>Bài học: {formatDisplayText(extraLogs.form5.tomorrowLesson)}</li>
-                      <li>Hành động mới: {formatDisplayText(extraLogs.form5.differentAction)}</li>
+                      <li>Bài học: {formatDisplayText(extraLogs?.form5?.tomorrowLesson)}</li>
+                      <li>Hành động mới: {formatDisplayText(extraLogs?.form5?.differentAction)}</li>
                     </ul>
                   </div>
                 )}
 
-                {Array.isArray(extraLogs?.form8) && extraLogs.form8.length > 0 && (
+                {((Array.isArray(extraLogs?.form8) && extraLogs.form8.length > 0) || availableForms.includes('form8')) && (
                   <div style={{ marginTop: 14 }}>
                     <strong>Mẫu 8: Củng cố niềm tin</strong>
-                    {extraLogs.form8.map((item, idx) => (
-                      <ul key={`f8-${idx}`} style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
-                        <li>Dòng {idx + 1} - Tình huống: {formatDisplayText(item.situation)}</li>
-                        <li>Niềm tin cũ: {formatDisplayText(item.oldBelief)}</li>
-                        <li>Niềm tin mới: {formatDisplayText(item.newChosenBelief)}</li>
-                        <li>Hành vi mới: {formatDisplayText(item.newBehavior)}</li>
-                        <li>Kết quả: {formatDisplayText(item.result)}</li>
-                      </ul>
-                    ))}
+                    {Array.isArray(extraLogs?.form8) && extraLogs.form8.length > 0 ? (
+                      extraLogs.form8.map((item, idx) => (
+                        <ul key={`f8-${idx}`} style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
+                          <li>Dòng {idx + 1} - Tình huống: {formatDisplayText(item.situation)}</li>
+                          <li>Niềm tin cũ: {formatDisplayText(item.oldBelief)}</li>
+                          <li>Niềm tin mới: {formatDisplayText(item.newChosenBelief)}</li>
+                          <li>Hành vi mới: {formatDisplayText(item.newBehavior)}</li>
+                          <li>Kết quả: {formatDisplayText(item.result)}</li>
+                        </ul>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: 13, marginTop: 4, color: '#64748b' }}>Chưa nhập</div>
+                    )}
                   </div>
                 )}
 
-                {extraLogs?.form7 && (
+                {(extraLogs?.form7 || availableForms.includes('form7')) && (
                   <div style={{ marginTop: 14 }}>
                     <strong>Mẫu 7: Nhật ký giữ chuẩn thu nhập</strong>
                     <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
-                      <li>Tôi đã giữ được chuẩn nào: {formatDisplayText(extraLogs.form7.keptStandard)}</li>
-                      <li>Dấu hiệu tụt chuẩn: {formatDisplayText(extraLogs.form7.backslideSign)}</li>
-                      <li>Tôi đã xử lý nó ra sao: {formatDisplayText(extraLogs.form7.solution)}</li>
+                      <li>Tôi đã giữ được chuẩn nào: {formatDisplayText(extraLogs?.form7?.keptStandard)}</li>
+                      <li>Dấu hiệu tụt chuẩn: {formatDisplayText(extraLogs?.form7?.backslideSign)}</li>
+                      <li>Tôi đã xử lý nó ra sao: {formatDisplayText(extraLogs?.form7?.solution)}</li>
                     </ul>
                   </div>
                 )}
 
-                {extraLogs?.form9 && (
+                {(extraLogs?.form9 || availableForms.includes('form9')) && (
                   <div style={{ marginTop: 14 }}>
                     <strong>Mẫu 9: Nhật ký phá giới hạn thu nhập</strong>
                     <ul style={{ paddingLeft: 18, marginTop: 8, fontSize: 13, color: '#1e293b' }}>
-                      <li>Tôi đang tự giới hạn ở đâu: {formatDisplayText(extraLogs.form9.selfLimitArea)}</li>
-                      <li>Hành vi chứng minh: {formatDisplayText(extraLogs.form9.proofBehavior)}</li>
-                      <li>Tôi nâng chuẩn thế nào: {formatDisplayText(extraLogs.form9.raiseStandard)}</li>
-                      <li>Hành động cụ thể: {formatDisplayText(extraLogs.form9.actionPlan)}</li>
+                      <li>Tôi đang tự giới hạn ở đâu: {formatDisplayText(extraLogs?.form9?.selfLimitArea)}</li>
+                      <li>Hành vi chứng minh: {formatDisplayText(extraLogs?.form9?.proofBehavior)}</li>
+                      <li>Tôi nâng chuẩn thế nào: {formatDisplayText(extraLogs?.form9?.raiseStandard)}</li>
+                      <li>Hành động cụ thể: {formatDisplayText(extraLogs?.form9?.actionPlan)}</li>
                     </ul>
                   </div>
                 )}
 
-                {extraLogs?.form12 && (
+                {(extraLogs?.form12 || availableForms.includes('form12')) && (
                   <div style={{ marginTop: 14 }}>
                     <strong>Mẫu 12: Tuyên ngôn nghề nghiệp cá nhân</strong>
                     <div style={{ marginTop: 6, fontSize: 13 }}>
-                      {formatDisplayText(extraLogs.form12.declarationText)}
+                      {formatDisplayText(extraLogs?.form12?.declarationText)}
                     </div>
                     <div style={{ marginTop: 6, fontSize: 13 }}>
-                      Ký tên – Ngày cam kết: {formatDisplayText(extraLogs.form12.commitmentSignature)}
+                      Ký tên – Ngày cam kết: {formatDisplayText(extraLogs?.form12?.commitmentSignature)}
                     </div>
                   </div>
                 )}
