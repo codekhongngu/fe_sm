@@ -417,7 +417,7 @@ const DashboardPage = () => {
       ) : (
         <div className="cards-grid">
           <div className="card" style={{ minHeight: 340 }}>
-            <h3 style={{ marginTop: 0 }}>So sánh chỉ số hành vi</h3>
+            <h3 style={{ marginTop: 0 }}>So sánh tỷ lệ nộp các biểu mẫu</h3>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={analytics?.charts?.barData || []}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -425,20 +425,20 @@ const DashboardPage = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="daThucHien" name="Đã thực hiện" fill="#0074ba" />
-                <Bar dataKey="chuaThucHien" name="Chưa thực hiện" fill="#ef4444" />
+                <Bar dataKey="daThucHien" name="Đã nộp" fill="#0074ba" />
+                <Bar dataKey="chuaThucHien" name="Chưa nộp" fill="#ef4444" />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           <div className="card" style={{ minHeight: 340 }}>
-            <h3 style={{ marginTop: 0 }}>Radar kỹ năng cốt lõi</h3>
+            <h3 style={{ marginTop: 0 }}>Radar mức độ hoàn thành</h3>
             <ResponsiveContainer width="100%" height={280}>
               <RadarChart data={analytics?.charts?.radarData || []}>
                 <PolarGrid />
                 <PolarAngleAxis dataKey="metric" />
                 <Radar
-                  name="Điểm cân bằng"
+                  name="Tỷ lệ nộp (%)"
                   dataKey="value"
                   stroke="#0074ba"
                   fill="#0074ba"
@@ -450,17 +450,17 @@ const DashboardPage = () => {
           </div>
 
           <div className="card" style={{ minHeight: 340 }}>
-            <h3 style={{ marginTop: 0 }}>Xu hướng 12 tuần</h3>
+            <h3 style={{ marginTop: 0 }}>Xu hướng nộp nhật ký 12 tuần (Mẫu 1)</h3>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={analytics?.charts?.lineData || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="week" />
-                <YAxis />
+                <YAxis domain={[0, 100]} />
                 <Tooltip />
                 <Line
                   type="monotone"
                   dataKey="value"
-                  name="% Giữ chuẩn"
+                  name="% Đã nộp"
                   stroke="#0074ba"
                   strokeWidth={3}
                 />

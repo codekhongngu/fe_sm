@@ -287,7 +287,7 @@ const ManagerDailyScorePage = () => {
   }, [allCriteria.length, selectedEmployeeId, scoreDate]);
 
   useEffect(() => {
-    if (!criteriaData) {
+    if (!criteriaData || user?.role === 'EMPLOYEE') {
       return;
     }
     const run = async () => {
@@ -298,7 +298,7 @@ const ManagerDailyScorePage = () => {
       }
     };
     run();
-  }, [criteriaData, fromDate, toDate, selectedEmployeeId]);
+  }, [criteriaData, fromDate, toDate, selectedEmployeeId, user?.role]);
 
   const onSave = async () => {
     if (!canEditScore && !canEditEmployeeNote) {
@@ -325,7 +325,9 @@ const ManagerDailyScorePage = () => {
       };
       await managerDailyScoreService.submitEntry(payload);
       setStatusText('Đã lưu phiếu chấm điểm hằng ngày');
-      await loadStatistics();
+      if (user?.role !== 'EMPLOYEE') {
+        await loadStatistics();
+      }
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Lưu phiếu chấm điểm thất bại');
     } finally {
@@ -345,7 +347,6 @@ const ManagerDailyScorePage = () => {
           </p>
         </section>
 
-        {statusText ? <div className="status-ok" style={{ marginBottom: 8 }}>{statusText}</div> : null}
         {errorText ? <div className="status-err" style={{ marginBottom: 8 }}>{errorText}</div> : null}
         {loading ? <div>Đang tải dữ liệu...</div> : null}
 
@@ -427,103 +428,108 @@ const ManagerDailyScorePage = () => {
               />
             ))}
           </div>
-          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-            <div style={{ color: '#334155' }}>
-              {user?.role !== 'EMPLOYEE' && (
-                <>Tổng điểm: <strong>{currentTotalScore}</strong></>
-              )}
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ color: '#334155' }}>
+                {user?.role !== 'EMPLOYEE' && (
+                  <>Tổng điểm: <strong>{currentTotalScore}</strong></>
+                )}
+              </div>
+              <button type="button" className="btn" onClick={onSave} disabled={saving || (!canEditScore && !canEditEmployeeNote)}>
+                {saving ? 'Đang lưu...' : (canEditScore || canEditEmployeeNote) ? 'Lưu phiếu' : 'Chỉ xem thống kê'}
+              </button>
             </div>
-            <button type="button" className="btn" onClick={onSave} disabled={saving || (!canEditScore && !canEditEmployeeNote)}>
-              {saving ? 'Đang lưu...' : (canEditScore || canEditEmployeeNote) ? 'Lưu phiếu' : 'Chỉ xem thống kê'}
-            </button>
+            {statusText ? <div className="status-ok" style={{ textAlign: 'right' }}>{statusText}</div> : null}
           </div>
         </section>
 
-        <section className="card">
-          <h3 style={{ marginTop: 0 }}>Thống kê theo mẫu hiện tại</h3>
-          <div className="manager-daily-score-filter-grid" style={{ marginBottom: 10 }}>
-            <div>
-              <div className="review-label">Từ ngày</div>
-              <input
-                type="date"
-                className="field"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <div className="review-label">Đến ngày</div>
-              <input
-                type="date"
-                className="field"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'end' }}>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="btn outline" onClick={loadStatistics}>
-                  Làm mới thống kê
-                </button>
-                <button type="button" className="btn" onClick={exportStatistics}>
-                  Xuất Excel
-                </button>
+        {user?.role !== 'EMPLOYEE' && (
+          <section className="card">
+            <h3 style={{ marginTop: 0 }}>Thống kê theo mẫu hiện tại</h3>
+            <div className="manager-daily-score-filter-grid" style={{ marginBottom: 10 }}>
+              <div>
+                <div className="review-label">Từ ngày</div>
+                <input
+                  type="date"
+                  className="field"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <div className="review-label">Đến ngày</div>
+                <input
+                  type="date"
+                  className="field"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'end' }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="btn outline" onClick={loadStatistics}>
+                    Làm mới thống kê
+                  </button>
+                  <button type="button" className="btn" onClick={exportStatistics}>
+                    Xuất Excel
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="manager-daily-score-table-wrap">
-            <table className="table manager-daily-score-table">
-              <thead>
-                <tr>
-                  <th>Đơn vị</th>
-                  <th>Họ và tên</th>
-                  <th>Ngày</th>
-                  {allCriteria.map((criterion) => (
-                    <th key={criterion.id}>{criterion.contentName}</th>
-                  ))}
-                  {(criteriaData?.sections || []).map((section) => (
-                    <th key={section.sectionCode}>Tổng {section.sectionName}</th>
-                  ))}
-                  <th>Tổng cộng</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(stats?.rows || []).map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.unitName || '-'}</td>
-                    <td>{row.employee?.fullName || '-'}</td>
-                    <td>{row.scoreDate || '-'}</td>
+            <div className="manager-daily-score-table-wrap">
+              <table className="table manager-daily-score-table">
+                <thead>
+                  <tr>
+                    <th>Đơn vị</th>
+                    <th>Họ và tên</th>
+                    <th>Ngày</th>
                     {allCriteria.map((criterion) => (
-                      <td key={criterion.id}>
-                        {Number(row.scoresByItemCode?.[criterion.itemCode] || 0)}
-                      </td>
+                      <th key={criterion.id}>{criterion.contentName}</th>
                     ))}
                     {(criteriaData?.sections || []).map((section) => (
-                      <td key={section.sectionCode}>
-                        {Number(row.sectionTotals?.[section.sectionCode] || 0)}
-                      </td>
+                      <th key={section.sectionCode}>Tổng {section.sectionName}</th>
                     ))}
-                    <td>
-                      <strong>{Number(row.totalScore || 0)}</strong>
-                    </td>
+                    <th>Tổng cộng</th>
                   </tr>
-                ))}
-                {!loading && (!stats?.rows || stats.rows.length === 0) ? (
-                  <tr>
-                    <td colSpan={4 + allCriteria.length + (criteriaData?.sections?.length || 0)}>
-                      Chưa có dữ liệu thống kê trong khoảng lọc.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ marginTop: 10, color: '#334155' }}>
-            Số dòng thống kê: <strong>{stats?.totals?.totalRows || 0}</strong> | Điểm trung bình:{' '}
-            <strong>{stats?.totals?.averageScore || 0}</strong>
-          </div>
-        </section>
+                </thead>
+                <tbody>
+                  {(stats?.rows || []).map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.unitName || '-'}</td>
+                      <td>{row.employee?.fullName || '-'}</td>
+                      <td>{row.scoreDate || '-'}</td>
+                      {allCriteria.map((criterion) => (
+                        <td key={criterion.id}>
+                          {Number(row.scoresByItemCode?.[criterion.itemCode] || 0)}
+                        </td>
+                      ))}
+                      {(criteriaData?.sections || []).map((section) => (
+                        <td key={section.sectionCode}>
+                          {Number(row.sectionTotals?.[section.sectionCode] || 0)}
+                        </td>
+                      ))}
+                      <td>
+                        <strong>{Number(row.totalScore || 0)}</strong>
+                      </td>
+                    </tr>
+                  ))}
+                  {!loading && (!stats?.rows || stats.rows.length === 0) ? (
+                    <tr>
+                      <td colSpan={4 + allCriteria.length + (criteriaData?.sections?.length || 0)}>
+                        Chưa có dữ liệu thống kê trong khoảng lọc.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ marginTop: 10, color: '#334155' }}>
+              Số dòng thống kê: <strong>{stats?.totals?.totalRows || 0}</strong> | Điểm trung bình:{' '}
+              <strong>{stats?.totals?.averageScore || 0}</strong>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
@@ -573,7 +579,13 @@ const FragmentSection = ({
               value={Number(selfScoreMap[item.id] ?? 0)}
               disabled={!canEditEmployeeNote}
               onChange={(e) => onChangeSelfScore(item.id, Number(e.target.value || 0))}
+              style={{
+                borderColor: Number(selfScoreMap[item.id] ?? 0) > Number(item.maxScore || 0) ? '#dc2626' : undefined
+              }}
             />
+            {Number(selfScoreMap[item.id] ?? 0) > Number(item.maxScore || 0) && (
+              <div style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>Sai dữ liệu</div>
+            )}
           </div>
           <div className="manager-daily-score-col score">
             <div style={{ marginBottom: 4, fontSize: 12, fontWeight: 600 }}>Thẩm định</div>
@@ -585,7 +597,13 @@ const FragmentSection = ({
               value={Number(scoreMap[item.id] ?? 0)}
               disabled={!canEditScore}
               onChange={(e) => onChangeScore(item.id, Number(e.target.value || 0))}
+              style={{
+                borderColor: Number(scoreMap[item.id] ?? 0) > Number(item.maxScore || 0) ? '#dc2626' : undefined
+              }}
             />
+            {Number(scoreMap[item.id] ?? 0) > Number(item.maxScore || 0) && (
+              <div style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>Sai dữ liệu</div>
+            )}
           </div>
         </div>
       ))}

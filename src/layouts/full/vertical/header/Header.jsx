@@ -69,7 +69,7 @@ const Header = () => {
         >
           Cấu hình catalog
         </NavLink> */}
-        {user?.role !== 'PROVINCIAL_VIEWER' ? (
+        {(user?.role === 'EMPLOYEE' || user?.role === 'ADMIN') ? (
           <NavLink
             to="/discipline/journey-90"
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
