@@ -4,6 +4,8 @@ const behaviorAdminService = {
   getWeeklyConfigs: () => axiosInstance.get('/api/admin/weekly-configs').then((res) => res.data),
   getWeeklySummary: (weekId) =>
     axiosInstance.get(`/api/reports/summary/weekly/${weekId}`).then((res) => res.data),
+  saveWeeklySummary: (data) =>
+    axiosInstance.post('/api/reports/summary/weekly', data).then((res) => res.data),
   createWeeklyConfig: (payload) =>
     axiosInstance.post('/api/admin/weekly-configs', payload).then((res) => res.data),
   updateWeeklyConfig: (id, payload) =>

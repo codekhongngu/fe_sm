@@ -583,8 +583,13 @@ const FragmentSection = ({
                 borderColor: Number(selfScoreMap[item.id] ?? 0) > Number(item.maxScore || 0) ? '#dc2626' : undefined
               }}
             />
+            <div style={{ color: '#64748b', fontSize: 11, marginTop: 4 }}>
+              Tối đa: {Number(item.maxScore || 0)} điểm
+            </div>
             {Number(selfScoreMap[item.id] ?? 0) > Number(item.maxScore || 0) && (
-              <div style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>Sai dữ liệu</div>
+              <div style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>
+                Điểm vượt quá tối đa
+              </div>
             )}
           </div>
           <div className="manager-daily-score-col score">
@@ -601,8 +606,13 @@ const FragmentSection = ({
                 borderColor: Number(scoreMap[item.id] ?? 0) > Number(item.maxScore || 0) ? '#dc2626' : undefined
               }}
             />
+            <div style={{ color: '#64748b', fontSize: 11, marginTop: 4 }}>
+              Tối đa: {Number(item.maxScore || 0)} điểm
+            </div>
             {Number(scoreMap[item.id] ?? 0) > Number(item.maxScore || 0) && (
-              <div style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>Sai dữ liệu</div>
+              <div style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>
+                Điểm vượt quá tối đa
+              </div>
             )}
           </div>
         </div>

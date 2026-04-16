@@ -11,8 +11,10 @@ function App() {
   useEffect(() => {
     dispatch(restoreAuth());
     
-    // Tải cấu hình giờ cắt ngày từ hệ thống (Dùng axios gốc để không bị interceptor chặn lỗi 401)
+    // Tải cấu hình giờ cắt ngày và đồng bộ giờ server từ hệ thống
     const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://be-sm.codekhongngu.workers.dev';
+    
+    // 1. Đồng bộ giờ cắt ngày (Cutoff time)
     axios.get(`${baseURL}/api/system-configs/cutoff-time`)
       .then(res => {
         if (res.data && res.data.hour !== undefined) {
@@ -20,6 +22,29 @@ function App() {
         }
       })
       .catch(e => console.error('Lỗi tải cấu hình time-shifting:', e));
+      
+    // 2. Đồng bộ thời gian thực tế với Server để tránh lỗi sai lệch ngày giờ
+    const clientStartTime = Date.now();
+    axios.get(`${baseURL}/health/db`)
+      .then(res => {
+        if (res.data && res.data.timestamp) {
+          const clientEndTime = Date.now();
+          const latency = (clientEndTime - clientStartTime) / 2; // Ước tính độ trễ mạng 1 chiều
+          
+          const serverTimeMs = new Date(res.data.timestamp).getTime();
+          const clientCurrentTimeMs = Date.now();
+          
+          // Tính offset: (Giờ server + độ trễ mạng) - Giờ client hiện tại
+          const offsetMs = (serverTimeMs + latency) - clientCurrentTimeMs;
+          
+          // Chỉ áp dụng offset nếu lệch quá 30 giây để tránh nhảy số không cần thiết
+          if (Math.abs(offsetMs) > 30000) {
+            BusinessTimeUtil.SERVER_TIME_OFFSET_MS = offsetMs;
+            console.log(`Đã đồng bộ giờ Server. Độ lệch: ${Math.round(offsetMs / 1000)} giây.`);
+          }
+        }
+      })
+      .catch(e => console.error('Lỗi đồng bộ giờ Server:', e));
   }, [dispatch]);
 
   return <Router />;

@@ -4,6 +4,7 @@ import { BusinessTimeUtil } from '../../../utils/BusinessTimeUtil';
 
 const SystemConfigPage = () => {
   const [cutoffHour, setCutoffHour] = useState('');
+  const [disableCrossTimeManager, setDisableCrossTimeManager] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -12,9 +13,14 @@ const SystemConfigPage = () => {
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const res = await axiosInstance.get('/api/system-configs/cutoff-time');
-      if (res.data && res.data.hour !== undefined) {
-        setCutoffHour(res.data.hour);
+      const res = await axiosInstance.get('/api/system-configs');
+      if (res.data) {
+        if (res.data.cutoffHour !== undefined) {
+          setCutoffHour(res.data.cutoffHour);
+        }
+        if (res.data.disableCrossTimeManager !== undefined) {
+          setDisableCrossTimeManager(res.data.disableCrossTimeManager);
+        }
       }
     } catch (error) {
       setErrorText('Không tải được cấu hình hệ thống');
@@ -39,7 +45,10 @@ const SystemConfigPage = () => {
 
     setSaving(true);
     try {
-      await axiosInstance.patch('/api/admin/system-configs/cutoff-time', { hour });
+      await axiosInstance.patch('/api/admin/system-configs', { 
+        cutoffHour: hour,
+        disableCrossTimeManager
+      });
       setStatusText('Lưu cấu hình thành công');
       BusinessTimeUtil.CUTOFF_HOUR = hour; // Cập nhật ngay trên bộ nhớ Frontend
     } catch (error) {
@@ -62,7 +71,7 @@ const SystemConfigPage = () => {
       {loading ? (
         <div>Đang tải cấu hình...</div>
       ) : (
-        <div style={{ maxWidth: 400 }}>
+        <div style={{ maxWidth: 600 }}>
           <div className="form-group" style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>
               Giờ cắt ngày (Cut-off Time)
@@ -81,6 +90,21 @@ const SystemConfigPage = () => {
                 style={{ width: 100 }}
               />
               <span>Giờ (0 - 23)</span>
+            </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 30 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={disableCrossTimeManager}
+                onChange={(e) => setDisableCrossTimeManager(e.target.checked)}
+                style={{ width: 18, height: 18 }}
+              />
+              Bỏ qua kiểm tra thời gian cho Quản lý (Cross time)
+            </label>
+            <div style={{ color: '#666', fontSize: '0.9em', marginTop: 8, marginLeft: 28 }}>
+              Khi bật tùy chọn này, các tài khoản Quản lý (Manager/Admin) có thể chấm điểm, duyệt form và nhận xét cho bất kỳ ngày nào mà không bị chặn bởi giới hạn thời gian (cross time / cuối tuần).
             </div>
           </div>
 

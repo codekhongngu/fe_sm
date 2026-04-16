@@ -1,10 +1,19 @@
 export class BusinessTimeUtil {
   static CUTOFF_HOUR = 7;
+  // Độ lệch tính bằng ms: (Thời gian Server) - (Thời gian Client)
+  static SERVER_TIME_OFFSET_MS = 0;
+
+  /**
+   * Lấy thời gian hiện tại đã được đồng bộ với Server
+   */
+  static getNow() {
+    return new Date(Date.now() + this.SERVER_TIME_OFFSET_MS);
+  }
 
   /**
    * Tính toán Ngày Nghiệp Vụ dựa trên mốc Cut-off 07:00 AM
    */
-  static getEffectiveBusinessDate(systemTime = new Date()) {
+  static getEffectiveBusinessDate(systemTime = this.getNow()) {
     const time = new Date(systemTime);
     
     const isDateOnlyString = typeof systemTime === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(systemTime);
@@ -31,7 +40,7 @@ export class BusinessTimeUtil {
   /**
    * Kiểm tra xem Ngày Nghiệp Vụ có rơi vào Cuối tuần (Thứ 7, Chủ Nhật) hay không
    */
-  static isWeekendLocked(systemTime = new Date()) {
+  static isWeekendLocked(systemTime = this.getNow()) {
     const businessDate = this.getEffectiveBusinessDate(systemTime);
     const dayOfWeek = businessDate.day(); 
     // 0: Chủ Nhật, 6: Thứ Bảy
@@ -41,7 +50,7 @@ export class BusinessTimeUtil {
   /**
    * Kiểm tra xem có phải là Thứ Hai - Ngày được phép cộng dồn dữ liệu cuối tuần không
    */
-  static isAccumulationDay(systemTime = new Date()) {
+  static isAccumulationDay(systemTime = this.getNow()) {
     const businessDate = this.getEffectiveBusinessDate(systemTime);
     return businessDate.day() === 1; // 1: Thứ Hai
   }
