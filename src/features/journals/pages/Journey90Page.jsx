@@ -138,6 +138,22 @@ const Journey90Page = () => {
   };
 
   const getFormStatus = (formType, defaultStatus) => {
+    // Kiểm tra xem form đã được nhập chưa dựa trên dữ liệu hiện có
+    let isFilled = false;
+    if (formType === 'awareness') isFilled = !!todayJournal?.awarenessSubmittedAt;
+    if (formType === 'standards') isFilled = !!todayJournal?.standardsSubmittedAt;
+    if (formType === 'behavior') isFilled = !!extraLogs?.form2;
+    if (formType === 'form3') isFilled = !!extraLogs?.form3;
+    if (formType === 'form4') isFilled = Array.isArray(extraLogs?.form4) && extraLogs.form4.length > 0;
+    if (formType === 'form5') isFilled = !!extraLogs?.form5;
+    if (formType === 'form7') isFilled = !!extraLogs?.form7;
+    if (formType === 'form8') isFilled = Array.isArray(extraLogs?.form8) && extraLogs.form8.length > 0;
+    if (formType === 'form9') isFilled = !!extraLogs?.form9;
+    if (formType === 'form12') isFilled = !!extraLogs?.form12;
+
+    // Nếu form chưa nhập thì luôn là PENDING, không hiển thị ĐẠT (APPROVED) dù nhật ký chung đã được duyệt
+    if (!isFilled) return 'PENDING';
+
     // Nếu quản lý đã duyệt (status = APPROVED) -> khóa
     let reviewStatus = 'PENDING';
     if (formType === 'awareness') reviewStatus = extraLogs?.reviews?.FORM_1_AWARENESS?.status;
