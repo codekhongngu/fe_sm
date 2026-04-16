@@ -44,11 +44,13 @@ const normalizeText = (value) =>
     .trim();
 
 import { BusinessTimeUtil } from '../../../utils/BusinessTimeUtil';
+import { useSelector } from 'react-redux';
+import { selectAuth } from '../../../store/auth/AuthSlice';
 
 const formatDisplayText = (value, fallback = '-') => normalizeText(value) || fallback;
 
-const getEffectiveToday = () => {
-  return BusinessTimeUtil.getEffectiveBusinessDate().toDate();
+const getEffectiveToday = (isManager = false) => {
+  return BusinessTimeUtil.getEffectiveBusinessDate(undefined, isManager).toDate();
 };
 
 const getStartOfWeek = (date) => {
@@ -66,9 +68,12 @@ const PHASE_FORM_MAP = {
 };
 
 const Journey90Page = () => {
-  const todayDefault = toDateKey(getEffectiveToday());
+  const { user } = useSelector(selectAuth);
+  const isManager = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+
+  const todayDefault = toDateKey(getEffectiveToday(isManager));
   const fromDefault = (() => {
-    const d = getEffectiveToday();
+    const d = getEffectiveToday(isManager);
     d.setDate(d.getDate() - 89);
     return toDateKey(d);
   })();
@@ -172,7 +177,7 @@ const Journey90Page = () => {
         }
       });
       setJournalsByDate(map);
-      setSelectedDateKey(toDateKey(getEffectiveToday()));
+      setSelectedDateKey(toDateKey(getEffectiveToday(isManager)));
     } catch (error) {
       const msg = error?.response?.data?.message;
       if (msg !== 'Forbidden resource') {
@@ -229,14 +234,14 @@ const Journey90Page = () => {
   const cycleStartDateKey = useMemo(() => {
     const keys = Object.keys(journalsByDate);
     if (keys.length === 0) {
-      return toDateKey(getEffectiveToday());
+      return toDateKey(getEffectiveToday(isManager));
     }
     return [...keys].sort()[0];
-  }, [journalsByDate]);
+  }, [journalsByDate, isManager]);
 
   const timelineEntries = useMemo(() => {
     const startDate = fromDateKey(cycleStartDateKey);
-    const today = getEffectiveToday();
+    const today = getEffectiveToday(isManager);
     return Array.from({ length: 90 }).map((_, idx) => {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + idx);
@@ -265,7 +270,7 @@ const Journey90Page = () => {
   }, [journalsByDate, cycleStartDateKey]);
 
   const filteredEntries = useMemo(() => {
-    const now = getEffectiveToday();
+    const now = getEffectiveToday(isManager);
     const startOfWeek = getStartOfWeek(now);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     return timelineEntries.filter((entry) => {
@@ -286,7 +291,7 @@ const Journey90Page = () => {
   const progress = useMemo(() => {
     const submittedCount = timelineEntries.filter((entry) => entry.journalId).length;
     let streak = 0;
-    const todayKey = toDateKey(getEffectiveToday());
+    const todayKey = toDateKey(getEffectiveToday(isManager));
     let cursor = fromDateKey(todayKey);
     while (true) {
       const key = toDateKey(cursor);
@@ -298,21 +303,21 @@ const Journey90Page = () => {
       }
     }
     const cycleStart = fromDateKey(cycleStartDateKey);
-    const now = getEffectiveToday();
+    const now = getEffectiveToday(isManager);
     const currentDay = Math.max(
       1,
       Math.min(90, Math.floor((now.getTime() - cycleStart.getTime()) / 86400000) + 1),
     );
     return { submittedCount, streak, currentDay };
-  }, [timelineEntries, journalsByDate, cycleStartDateKey]);
+  }, [timelineEntries, journalsByDate, cycleStartDateKey, isManager]);
 
-  const todayKey = toDateKey(getEffectiveToday());
+  const todayKey = toDateKey(getEffectiveToday(isManager));
   const todayJournal = journalsByDate[todayKey];
 
   const selectedStatus = selectedDateKey
     ? (() => {
         const selectedDate = fromDateKey(selectedDateKey);
-        const today = getEffectiveToday();
+        const today = getEffectiveToday(isManager);
         if (selectedDate > today) return 'future';
         if (selectedJournal?.evaluation) return 'graded';
         if (
@@ -330,7 +335,7 @@ const Journey90Page = () => {
       .filter((item) => item?.isActive !== false)
       .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
     
-    const today = toDateKey(getEffectiveToday());
+    const today = toDateKey(getEffectiveToday(isManager));
     const matched =
       activePhaseConfigs.find(
         (item) =>
@@ -346,7 +351,7 @@ const Journey90Page = () => {
 
     const phaseCode = String(matched?.phaseCode || '').toUpperCase();
     return PHASE_FORM_MAP[phaseCode] || PHASE_FORM_MAP.PHASE_1;
-  }, [phaseConfigs, getEffectiveToday]);
+  }, [phaseConfigs, isManager]);
 
   useEffect(() => {
     if (!availableForms.includes(activeEform)) {
@@ -735,14 +740,14 @@ const Journey90Page = () => {
                 </button>
               </div>
 
-              {BusinessTimeUtil.isWeekendLocked() ? (
+              {BusinessTimeUtil.isWeekendLocked(undefined, isManager) ? (
                 <div style={{ padding: '20px', background: '#fff3cd', color: '#92400e', borderRadius: '12px', border: '1px solid #fde68a', marginBottom: '20px' }}>
                   <h3 style={{ marginTop: 0 }}>Cuối tuần nghỉ ngơi!</h3>
                   <p>Hệ thống hiện đang khóa chức năng nộp nhật ký. Dữ liệu bán hàng/tương tác phát sinh trong Thứ 7, Chủ Nhật vui lòng cộng dồn và khai báo vào Thứ Hai tuần sau nhé.</p>
                 </div>
               ) : (
                 <>
-                  {BusinessTimeUtil.isAccumulationDay() && (
+                  {BusinessTimeUtil.isAccumulationDay(undefined, isManager) && (
                     <div style={{ padding: '12px 16px', background: '#e0f2fe', color: '#0369a1', borderRadius: '8px', border: '1px solid #bae6fd', marginBottom: '16px', fontSize: '14px' }}>
                       💡 <strong>Ghi chú Thứ Hai:</strong> Bạn có thể cộng dồn các số liệu phát sinh của Thứ 7 và Chủ Nhật vào tờ khai ngày hôm nay.
                     </div>

@@ -4,6 +4,7 @@ import { BusinessTimeUtil } from '../../../utils/BusinessTimeUtil';
 
 const SystemConfigPage = () => {
   const [cutoffHour, setCutoffHour] = useState('');
+  const [cutoffHourManager, setCutoffHourManager] = useState('');
   const [disableCrossTimeManager, setDisableCrossTimeManager] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -17,6 +18,9 @@ const SystemConfigPage = () => {
       if (res.data) {
         if (res.data.cutoffHour !== undefined) {
           setCutoffHour(res.data.cutoffHour);
+        }
+        if (res.data.cutoffHourManager !== undefined) {
+          setCutoffHourManager(res.data.cutoffHourManager);
         }
         if (res.data.disableCrossTimeManager !== undefined) {
           setDisableCrossTimeManager(res.data.disableCrossTimeManager);
@@ -39,7 +43,13 @@ const SystemConfigPage = () => {
     
     const hour = parseInt(cutoffHour, 10);
     if (isNaN(hour) || hour < 0 || hour > 23) {
-      setErrorText('Giờ cắt ngày phải là số từ 0 đến 23');
+      setErrorText('Giờ cắt ngày cho nhân viên phải là số từ 0 đến 23');
+      return;
+    }
+
+    const hourManager = parseInt(cutoffHourManager, 10);
+    if (isNaN(hourManager) || hourManager < 0 || hourManager > 23) {
+      setErrorText('Giờ cắt ngày cho quản lý phải là số từ 0 đến 23');
       return;
     }
 
@@ -47,10 +57,12 @@ const SystemConfigPage = () => {
     try {
       await axiosInstance.patch('/api/admin/system-configs', { 
         cutoffHour: hour,
+        cutoffHourManager: hourManager,
         disableCrossTimeManager
       });
       setStatusText('Lưu cấu hình thành công');
       BusinessTimeUtil.CUTOFF_HOUR = hour; // Cập nhật ngay trên bộ nhớ Frontend
+      BusinessTimeUtil.CUTOFF_HOUR_MANAGER = hourManager; 
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Lưu cấu hình thất bại');
     } finally {
@@ -74,10 +86,10 @@ const SystemConfigPage = () => {
         <div style={{ maxWidth: 600 }}>
           <div className="form-group" style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>
-              Giờ cắt ngày (Cut-off Time)
+              Giờ cắt ngày cho Nhân viên (Cut-off Time)
             </label>
             <div style={{ color: '#666', fontSize: '0.9em', marginBottom: 8 }}>
-              Xác định mốc giờ chuyển ngày mới. Ví dụ: Nếu cấu hình là 7, thì trước 7h sáng hệ thống vẫn tính dữ liệu cho ngày hôm qua.
+              Xác định mốc giờ chuyển ngày mới đối với nhân viên Sales. Ví dụ: Nếu cấu hình là 7, thì trước 7h sáng hệ thống vẫn tính dữ liệu cho ngày hôm qua.
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <input
@@ -87,6 +99,27 @@ const SystemConfigPage = () => {
                 max="23"
                 value={cutoffHour}
                 onChange={(e) => setCutoffHour(e.target.value)}
+                style={{ width: 100 }}
+              />
+              <span>Giờ (0 - 23)</span>
+            </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>
+              Giờ cắt ngày cho Quản lý (Manager Cut-off Time)
+            </label>
+            <div style={{ color: '#666', fontSize: '0.9em', marginBottom: 8 }}>
+              Xác định mốc giờ chuyển ngày mới riêng cho cấp Quản lý (Manager/Admin). Ví dụ: Quản lý có thể được cấu hình 9h để có thêm thời gian duyệt bài ngày hôm trước.
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input
+                className="field"
+                type="number"
+                min="0"
+                max="23"
+                value={cutoffHourManager}
+                onChange={(e) => setCutoffHourManager(e.target.value)}
                 style={{ width: 100 }}
               />
               <span>Giờ (0 - 23)</span>

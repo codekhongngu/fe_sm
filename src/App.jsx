@@ -20,6 +20,9 @@ function App() {
         if (res.data && res.data.hour !== undefined) {
           BusinessTimeUtil.CUTOFF_HOUR = Number(res.data.hour);
         }
+        if (res.data && res.data.hourManager !== undefined) {
+          BusinessTimeUtil.CUTOFF_HOUR_MANAGER = Number(res.data.hourManager);
+        }
       })
       .catch(e => console.error('Lỗi tải cấu hình time-shifting:', e));
       

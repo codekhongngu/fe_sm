@@ -1,5 +1,6 @@
 export class BusinessTimeUtil {
   static CUTOFF_HOUR = 7;
+  static CUTOFF_HOUR_MANAGER = 7;
   // Độ lệch tính bằng ms: (Thời gian Server) - (Thời gian Client)
   static SERVER_TIME_OFFSET_MS = 0;
 
@@ -11,14 +12,16 @@ export class BusinessTimeUtil {
   }
 
   /**
-   * Tính toán Ngày Nghiệp Vụ dựa trên mốc Cut-off 07:00 AM
+   * Tính toán Ngày Nghiệp Vụ dựa trên mốc Cut-off
    */
-  static getEffectiveBusinessDate(systemTime = this.getNow()) {
+  static getEffectiveBusinessDate(systemTime = this.getNow(), isManager = false) {
     const time = new Date(systemTime);
     
     const isDateOnlyString = typeof systemTime === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(systemTime);
 
-    if (!isDateOnlyString && time.getHours() < this.CUTOFF_HOUR) {
+    const appliedCutoff = isManager ? this.CUTOFF_HOUR_MANAGER : this.CUTOFF_HOUR;
+
+    if (!isDateOnlyString && time.getHours() < appliedCutoff) {
       time.setDate(time.getDate() - 1);
     }
     time.setHours(0, 0, 0, 0);
@@ -40,8 +43,8 @@ export class BusinessTimeUtil {
   /**
    * Kiểm tra xem Ngày Nghiệp Vụ có rơi vào Cuối tuần (Thứ 7, Chủ Nhật) hay không
    */
-  static isWeekendLocked(systemTime = this.getNow()) {
-    const businessDate = this.getEffectiveBusinessDate(systemTime);
+  static isWeekendLocked(systemTime = this.getNow(), isManager = false) {
+    const businessDate = this.getEffectiveBusinessDate(systemTime, isManager);
     const dayOfWeek = businessDate.day(); 
     // 0: Chủ Nhật, 6: Thứ Bảy
     return dayOfWeek === 0 || dayOfWeek === 6;
@@ -50,8 +53,8 @@ export class BusinessTimeUtil {
   /**
    * Kiểm tra xem có phải là Thứ Hai - Ngày được phép cộng dồn dữ liệu cuối tuần không
    */
-  static isAccumulationDay(systemTime = this.getNow()) {
-    const businessDate = this.getEffectiveBusinessDate(systemTime);
+  static isAccumulationDay(systemTime = this.getNow(), isManager = false) {
+    const businessDate = this.getEffectiveBusinessDate(systemTime, isManager);
     return businessDate.day() === 1; // 1: Thứ Hai
   }
 }

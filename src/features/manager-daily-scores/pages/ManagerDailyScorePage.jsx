@@ -5,11 +5,6 @@ import { selectAuth } from '../../../store/auth/AuthSlice';
 
 import { BusinessTimeUtil } from '../../../utils/BusinessTimeUtil';
 
-const getEffectiveTodayKey = () => {
-  return BusinessTimeUtil.getEffectiveBusinessDate().format('YYYY-MM-DD');
-};
-
-const todayKey = getEffectiveTodayKey();
 const SCORE_GUIDE_BY_ITEM_CODE = {
   LEARNING_TRAINING_PARTICIPATION:
     'Tốt: hiểu rõ, phát biểu, áp dụng và chia sẻ kinh nghiệm (2-5 điểm)\nĐạt: có tham gia (1 điểm)',
@@ -40,6 +35,12 @@ const BEHAVIOR_SUCCESSFUL_CARE_CALLS_CODE = 'BEHAVIOR_SUCCESSFUL_CARE_CALLS';
 
 const ManagerDailyScorePage = () => {
   const { user } = useSelector(selectAuth);
+  
+  const isManager = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+  const todayKey = useMemo(() => 
+    BusinessTimeUtil.getEffectiveBusinessDate(undefined, isManager).format('YYYY-MM-DD'),
+    [isManager]
+  );
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -52,6 +53,7 @@ const ManagerDailyScorePage = () => {
   const [scoreMap, setScoreMap] = useState({});
   const [selfScoreMap, setSelfScoreMap] = useState({});
   const [employeeNoteMap, setEmployeeNoteMap] = useState({});
+  const [sheetStatus, setSheetStatus] = useState('');
   const [fromDate, setFromDate] = useState(todayKey);
   const [toDate, setToDate] = useState(todayKey);
   const [stats, setStats] = useState(null);
@@ -191,15 +193,23 @@ const ManagerDailyScorePage = () => {
     });
 
     const sheetItems = data?.sheet?.items || [];
+    const isApproved = data?.sheet?.status === 'APPROVED';
+
     sheetItems.forEach((item) => {
-      initialScoreMap[item.criteriaId] = Number(item.score || 0);
-      initialSelfScoreMap[item.criteriaId] = Number(item.selfScore || 0);
+      const sScore = Number(item.score || 0);
+      const slfScore = Number(item.selfScore || 0);
+      
+      // Tự động copy selfScore sang score nếu người dùng là quản lý/admin, phiếu chưa duyệt, và chưa có điểm thẩm định
+      initialScoreMap[item.criteriaId] = (canEditScore && !isApproved && sScore === 0) ? slfScore : sScore;
+      
+      initialSelfScoreMap[item.criteriaId] = slfScore;
       initialEmployeeNoteMap[item.criteriaId] = item.employeeNote || '';
     });
 
     setScoreMap(initialScoreMap);
     setSelfScoreMap(initialSelfScoreMap);
     setEmployeeNoteMap(initialEmployeeNoteMap);
+    setSheetStatus(data?.sheet?.status || '');
   };
 
   const handleSelfScoreChange = (criteriaId, value) => {
@@ -429,15 +439,17 @@ const ManagerDailyScorePage = () => {
             ))}
           </div>
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
               <div style={{ color: '#334155' }}>
                 {user?.role !== 'EMPLOYEE' && (
                   <>Tổng điểm: <strong>{currentTotalScore}</strong></>
                 )}
               </div>
-              <button type="button" className="btn" onClick={onSave} disabled={saving || (!canEditScore && !canEditEmployeeNote)}>
-                {saving ? 'Đang lưu...' : (canEditScore || canEditEmployeeNote) ? 'Lưu phiếu' : 'Chỉ xem thống kê'}
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn" onClick={onSave} disabled={saving || (!canEditScore && !canEditEmployeeNote)}>
+                  {saving ? 'Đang lưu...' : (canEditScore || canEditEmployeeNote) ? 'Lưu phiếu' : 'Chỉ xem thống kê'}
+                </button>
+              </div>
             </div>
             {statusText ? <div className="status-ok" style={{ textAlign: 'right' }}>{statusText}</div> : null}
           </div>
