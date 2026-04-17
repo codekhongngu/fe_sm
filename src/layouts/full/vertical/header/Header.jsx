@@ -112,7 +112,15 @@ const Header = () => {
             to="/discipline/weekly-report"
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
           >
-            Mẫu báo cáo
+            Mẫu báo cáo tuần
+          </NavLink>
+        ) : null}
+        {user?.role === 'PROVINCIAL_VIEWER' ? (
+          <NavLink
+            to="/discipline/weekly-report"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Thống kê báo cáo tuần
           </NavLink>
         ) : null}
         {user?.role === 'PROVINCIAL_VIEWER' ? (

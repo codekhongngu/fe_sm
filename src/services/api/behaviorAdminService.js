@@ -2,8 +2,13 @@ import axiosInstance from '../../utils/http/axiosInstance';
 
 const behaviorAdminService = {
   getWeeklyConfigs: () => axiosInstance.get('/api/admin/weekly-configs').then((res) => res.data),
-  getWeeklySummary: (weekId) =>
-    axiosInstance.get(`/api/reports/summary/weekly/${weekId}`).then((res) => res.data),
+  getWeeklySummary: (weekId, unitId) => {
+    let url = `/api/reports/summary/weekly/${weekId}`;
+    if (unitId) {
+      url += `?unitId=${unitId}`;
+    }
+    return axiosInstance.get(url).then((res) => res.data);
+  },
   saveWeeklySummary: (data) =>
     axiosInstance.post('/api/reports/summary/weekly', data).then((res) => res.data),
   createWeeklyConfig: (payload) =>

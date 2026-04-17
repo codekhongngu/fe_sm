@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { selectAuth } from '../../../store/auth/AuthSlice';
 import behaviorAdminService from '../../../services/api/behaviorAdminService';
+import userService from '../../../services/api/userService';
+import * as XLSX from 'xlsx';
 
 const WeeklyReportPage = () => {
+  const { user } = useSelector(selectAuth);
+  const isViewerOnly = user?.role === 'PROVINCIAL_VIEWER' || user?.role === 'ADMIN';
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -9,6 +16,9 @@ const WeeklyReportPage = () => {
   
   const [weeklyConfigs, setWeeklyConfigs] = useState([]);
   const [selectedWeekId, setSelectedWeekId] = useState('');
+  
+  const [units, setUnits] = useState([]);
+  const [selectedUnitId, setSelectedUnitId] = useState('');
   
   const [weeklySummary, setWeeklySummary] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -35,8 +45,20 @@ const WeeklyReportPage = () => {
     }
   };
 
+  const loadUnits = async () => {
+    if (isViewerOnly) {
+      try {
+        const unitData = await userService.getUnits();
+        setUnits(Array.isArray(unitData) ? unitData : []);
+      } catch (error) {
+        console.error('Lỗi tải danh sách đơn vị:', error);
+      }
+    }
+  };
+
   useEffect(() => {
     loadWeeks();
+    loadUnits();
   }, []);
 
   useEffect(() => {
@@ -50,9 +72,9 @@ const WeeklyReportPage = () => {
       setErrorText('');
       setSuccessText('');
       try {
-        const data = await behaviorAdminService.getWeeklySummary(selectedWeekId);
+        const data = await behaviorAdminService.getWeeklySummary(selectedWeekId, selectedUnitId);
         setWeeklySummary(data || null);
-        setSelectedUserId(''); // Reset selected user when week changes
+        setSelectedUserId(''); // Reset selected user when week or unit changes
       } catch (error) {
         setErrorText(error?.response?.data?.message || 'Không tải được dữ liệu tuần');
       } finally {
@@ -60,7 +82,7 @@ const WeeklyReportPage = () => {
       }
     };
     run();
-  }, [selectedWeekId]);
+  }, [selectedWeekId, selectedUnitId]);
 
   // Update form data when a user is selected
   useEffect(() => {
@@ -147,13 +169,78 @@ const WeeklyReportPage = () => {
     }
   };
 
+  const handleExportExcel = () => {
+    if (!weeklySummary || !weeklySummary.items || weeklySummary.items.length === 0) {
+      setErrorText('Không có dữ liệu để xuất Excel');
+      return;
+    }
+
+    const currentWeek = weeklyConfigs.find(w => w.id === selectedWeekId);
+    const weekName = currentWeek ? currentWeek.weekName : 'Tuần';
+
+    // Prepare data for Excel
+    const excelData = [];
+    
+    // Header rows
+    excelData.push(['Mẫu 6: Báo cáo tuần', '', '', '', '', '']);
+    excelData.push(['GĐ VNPT khu vực tổng hợp', '', '', '', '', '']);
+    excelData.push(['']); // Empty row
+    
+    // Column Headers
+    excelData.push([
+      'Tên nhân viên', 
+      'Số KH gặp trong tuần', 
+      'Tỷ lệ% có hỏi sâu', 
+      'Tỷ lệ% có tư vấn đủ giải pháp', 
+      'Tỷ lệ% có theo đuổi đến cùng', 
+      'Nhận xét'
+    ]);
+
+    // Data rows
+    weeklySummary.items.forEach(item => {
+      excelData.push([
+        item.fullName,
+        item.totalCustomerMet || 0,
+        item.deepInquiryRate || 0,
+        item.fullConsultationRate || 0,
+        item.followedThroughRate || 0,
+        item.managerFeedback || ''
+      ]);
+    });
+
+    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+    
+    // Auto width for columns
+    const colWidths = [
+      { wch: 30 }, // Tên nhân viên
+      { wch: 25 }, // Số KH gặp trong tuần
+      { wch: 20 }, // Tỷ lệ% có hỏi sâu
+      { wch: 25 }, // Tỷ lệ% có tư vấn đủ giải pháp
+      { wch: 25 }, // Tỷ lệ% có theo đuổi đến cùng
+      { wch: 40 }, // Nhận xét
+    ];
+    worksheet['!cols'] = colWidths;
+
+    // Merge header cells
+    worksheet['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // Mẫu 6...
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }, // GĐ VNPT...
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Báo cáo tuần');
+
+    // Export file
+    XLSX.writeFile(workbook, `Mau_6_Bao_cao_tuan_${weekName}.xlsx`);
+  };
+
   return (
     <div className="review-v3-shell">
       <div className="review-v3-main">
         <section className="review-title-block">
-          <h1 style={{ margin: 0 }}>Mẫu 6: Báo cáo tuần</h1>
+          <h1 style={{ margin: 0 }}>{isViewerOnly ? 'Thống kê Báo cáo tuần' : 'Mẫu 6: Báo cáo tuần'}</h1>
           <p style={{ margin: '6px 0 0', color: '#64748b' }}>
-            Quản lý chọn nhân viên và tuần để nhập thông tin báo cáo tuần.
+            {isViewerOnly ? 'Xem thống kê nội dung báo cáo tuần toàn tỉnh.' : 'Quản lý chọn nhân viên và tuần để nhập thông tin báo cáo tuần.'}
           </p>
         </section>
 
@@ -180,28 +267,49 @@ const WeeklyReportPage = () => {
                 ))}
               </select>
             </div>
+
+            {isViewerOnly && (
+              <div style={{ flex: 1, minWidth: 250 }}>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Đơn vị:</label>
+                <select
+                  className="field"
+                  value={selectedUnitId}
+                  onChange={(e) => setSelectedUnitId(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">-- Tất cả đơn vị --</option>
+                  {units.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             
-            <div style={{ flex: 1, minWidth: 250 }}>
-              <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Nhân viên:</label>
-              <select
-                className="field"
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                style={{ width: '100%' }}
-                disabled={!selectedWeekId || !weeklySummary?.items}
-              >
-                <option value="">-- Chọn nhân viên --</option>
-                {(weeklySummary?.items || []).map((item) => (
-                  <option key={item.userId} value={item.userId}>
-                    {item.fullName}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isViewerOnly && (
+              <div style={{ flex: 1, minWidth: 250 }}>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Nhân viên:</label>
+                <select
+                  className="field"
+                  value={selectedUserId}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
+                  style={{ width: '100%' }}
+                  disabled={!selectedWeekId || !weeklySummary?.items}
+                >
+                  <option value="">-- Chọn nhân viên --</option>
+                  {(weeklySummary?.items || []).map((item) => (
+                    <option key={item.userId} value={item.userId}>
+                      {item.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </section>
 
-        {selectedUserId && (
+        {!isViewerOnly && selectedUserId && (
           <section className="card">
             <h3 style={{ marginTop: 0 }}>Nhập liệu báo cáo</h3>
             
@@ -275,10 +383,59 @@ const WeeklyReportPage = () => {
           </section>
         )}
         
-        {!selectedUserId && selectedWeekId && !loading && (
+        {!isViewerOnly && !selectedUserId && selectedWeekId && !loading && (
           <div className="card" style={{ textAlign: 'center', color: '#64748b', padding: '40px 20px' }}>
             Vui lòng chọn nhân viên để nhập liệu
           </div>
+        )}
+
+        {selectedWeekId && weeklySummary && weeklySummary.items && (
+          <section className="card" style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0 }}>Thống kê theo Mẫu 6</h3>
+              <button className="btn outline" onClick={handleExportExcel}>
+                Xuất Excel
+              </button>
+            </div>
+            
+            <div className="table-responsive">
+              <table className="table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+                <thead>
+                  <tr>
+                    {isViewerOnly && (
+                      <th style={{ textAlign: 'left', padding: 8, border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>Đơn vị</th>
+                    )}
+                    <th style={{ textAlign: 'left', padding: 8, border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>Tên nhân viên</th>
+                    <th style={{ padding: 8, border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>Số KH gặp trong tuần</th>
+                    <th style={{ padding: 8, border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>Tỷ lệ% có hỏi sâu</th>
+                    <th style={{ padding: 8, border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>Tỷ lệ% có tư vấn đủ giải pháp</th>
+                    <th style={{ padding: 8, border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>Tỷ lệ% có theo đuổi đến cùng</th>
+                    <th style={{ textAlign: 'left', padding: 8, border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>Nhận xét</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weeklySummary.items.map((item) => (
+                    <tr key={item.userId}>
+                      {isViewerOnly && (
+                        <td style={{ textAlign: 'left', padding: 8, border: '1px solid #e2e8f0' }}>{item.unitName || 'N/A'}</td>
+                      )}
+                      <td style={{ textAlign: 'left', padding: 8, border: '1px solid #e2e8f0' }}>{item.fullName}</td>
+                      <td style={{ padding: 8, border: '1px solid #e2e8f0' }}>{item.totalCustomerMet || 0}</td>
+                      <td style={{ padding: 8, border: '1px solid #e2e8f0' }}>{item.deepInquiryRate || 0}</td>
+                      <td style={{ padding: 8, border: '1px solid #e2e8f0' }}>{item.fullConsultationRate || 0}</td>
+                      <td style={{ padding: 8, border: '1px solid #e2e8f0' }}>{item.followedThroughRate || 0}</td>
+                      <td style={{ textAlign: 'left', padding: 8, border: '1px solid #e2e8f0' }}>{item.managerFeedback || ''}</td>
+                    </tr>
+                  ))}
+                  {weeklySummary.items.length === 0 && (
+                    <tr>
+                      <td colSpan={isViewerOnly ? "7" : "6"} style={{ padding: '20px', color: '#64748b' }}>Không có dữ liệu nhân viên</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
         )}
       </div>
     </div>
