@@ -101,6 +101,14 @@ const Header = () => {
             Tra cứu nhật ký tuần
           </NavLink>
         ) : null}
+        {user?.role === 'PROVINCIAL_VIEWER' ? (
+          <NavLink
+            to="/discipline/manager-weekly-review"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Thống kê Mẫu 10, Mẫu 11
+          </NavLink>
+        ) : null}
         <NavLink
           to="/discipline/manager-daily-score"
           className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}

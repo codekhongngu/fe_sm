@@ -23,6 +23,18 @@ const managerDailyScoreService = {
           res.headers?.['content-disposition']
             ?.match(/filename="?([^"]+)"?/)?.[1] || 'thong-ke-cham-diem.xlsx',
       })),
+  exportProvincialStatistics: (filters) =>
+    axiosInstance
+      .get('/manager-daily-scores/provincial-statistics-export', {
+        params: filters,
+        responseType: 'blob',
+      })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']
+            ?.match(/filename="?([^"]+)"?/)?.[1] || 'bao-cao-thong-ke-toan-tinh.xlsx',
+      })),
   getAdminCriteria: () =>
     axiosInstance.get('/manager-daily-scores/admin/criteria').then((res) => res.data),
   createCriterion: (payload) =>

@@ -20,6 +20,7 @@ const today = new Date().toISOString().slice(0, 10);
 const ProvincialApprovedJournalsPage = () => {
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const [statusText, setStatusText] = useState('');
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
   const [keyword, setKeyword] = useState('');
@@ -29,10 +30,12 @@ const ProvincialApprovedJournalsPage = () => {
   const [selected, setSelected] = useState(null);
   const [selectedApprovedForms, setSelectedApprovedForms] = useState([]);
   const [extraLogs, setExtraLogs] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setErrorText('');
+    setStatusText('');
     try {
       const [list, unitList] = await Promise.all([
         journalService.getApprovedJournals({ fromDate, toDate, unitId: unitId || undefined, keyword: keyword || undefined }),
@@ -77,6 +80,39 @@ const ProvincialApprovedJournalsPage = () => {
     [selectedApprovedForms],
   );
 
+  const exportApprovedStatusExcel = async () => {
+    setErrorText('');
+    setStatusText('');
+    if (!fromDate) {
+      setErrorText('Vui lòng chọn ngày báo cáo');
+      return;
+    }
+    if (fromDate !== toDate) {
+      setErrorText('Chức năng xuất mới chỉ hỗ trợ 1 ngày, vui lòng chọn Từ ngày = Đến ngày');
+      return;
+    }
+    setExporting(true);
+    try {
+      const result = await journalService.exportApprovedJournalsStatus({
+        reportDate: fromDate,
+        unitId: unitId || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất file Excel trạng thái Mẫu 01/03/08');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất file Excel thất bại');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-head">
@@ -86,6 +122,7 @@ const ProvincialApprovedJournalsPage = () => {
         </div>
       </div>
       {errorText ? <div className="status-err" style={{ marginBottom: 10 }}>{errorText}</div> : null}
+      {statusText ? <div className="status-ok" style={{ marginBottom: 10 }}>{statusText}</div> : null}
       {loading ? <div>Đang tải dữ liệu...</div> : null}
 
       <section className="card" style={{ marginBottom: 12 }}>
@@ -101,6 +138,9 @@ const ProvincialApprovedJournalsPage = () => {
           </select>
           <input className="field" placeholder="Tìm theo tên hoặc tài khoản" value={keyword} onChange={(e) => setKeyword(e.target.value)} />
           <button className="btn outline" type="button" onClick={load}>Lọc</button>
+          <button className="btn" type="button" onClick={exportApprovedStatusExcel} disabled={exporting}>
+            {exporting ? 'Đang xuất...' : 'Xuất Excel Mẫu 01/03/08'}
+          </button>
         </div>
       </section>
 

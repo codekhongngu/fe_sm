@@ -13,10 +13,13 @@ const ProvincialStatisticsPage = () => {
   const [units, setUnits] = useState([]);
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState('personal');
+  const [statusText, setStatusText] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setErrorText('');
+    setStatusText('');
     try {
       const [statsData, unitData] = await Promise.all([
         managerDailyScoreService.getStatistics({ fromDate, toDate, unitId: unitId || undefined }),
@@ -78,6 +81,39 @@ const ProvincialStatisticsPage = () => {
       .slice(0, 10);
   }, [stats?.rows]);
 
+  const exportProvincialReport = async () => {
+    setErrorText('');
+    setStatusText('');
+    if (!fromDate) {
+      setErrorText('Vui lòng chọn ngày để xuất báo cáo');
+      return;
+    }
+    if (fromDate !== toDate) {
+      setErrorText('Báo cáo xuất theo mẫu hiện tại chỉ hỗ trợ 1 ngày, vui lòng chọn Từ ngày = Đến ngày');
+      return;
+    }
+    setExporting(true);
+    try {
+      const result = await managerDailyScoreService.exportProvincialStatistics({
+        scoreDate: fromDate,
+        unitId: unitId || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất báo cáo Excel toàn tỉnh');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất báo cáo Excel thất bại');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-head">
@@ -87,6 +123,7 @@ const ProvincialStatisticsPage = () => {
         </div>
       </div>
       {errorText ? <div className="status-err" style={{ marginBottom: 10 }}>{errorText}</div> : null}
+      {statusText ? <div className="status-ok" style={{ marginBottom: 10 }}>{statusText}</div> : null}
       {loading ? <div>Đang tải dữ liệu...</div> : null}
 
       <section className="card" style={{ marginBottom: 12 }}>
@@ -135,6 +172,9 @@ const ProvincialStatisticsPage = () => {
             ))}
           </select>
           <button className="btn outline" onClick={load}>Lọc thống kê</button>
+          <button className="btn" onClick={exportProvincialReport} disabled={exporting}>
+            {exporting ? 'Đang xuất...' : 'Xuất báo cáo Excel'}
+          </button>
         </div>
       </section>
 

@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectAuth } from '../../../store/auth/AuthSlice';
 import axiosInstance from '../../../utils/http/axiosInstance';
 import journalService from '../../../services/api/journalService';
+import userService from '../../../services/api/userService';
 
 const ManagerWeeklyReviewPage = () => {
   const navigate = useNavigate();
+  const { user } = useSelector(selectAuth);
+  const isViewerOnly = user?.role === 'PROVINCIAL_VIEWER';
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -14,6 +20,8 @@ const ManagerWeeklyReviewPage = () => {
   const [pendingLogs, setPendingLogs] = useState([]);
   const [selected, setSelected] = useState(null);
   const [filterStatus, setFilterStatus] = useState('PENDING');
+  const [units, setUnits] = useState([]);
+  const [unitId, setUnitId] = useState('');
 
   const loadWeeks = async () => {
     try {
@@ -28,8 +36,20 @@ const ManagerWeeklyReviewPage = () => {
     }
   };
 
+  const loadUnits = async () => {
+    if (isViewerOnly || user?.role === 'ADMIN') {
+      try {
+        const data = await userService.getUnits();
+        setUnits(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
   useEffect(() => {
     loadWeeks();
+    loadUnits();
   }, []);
 
   const loadData = async (keepSelectedId = null) => {
@@ -38,7 +58,11 @@ const ManagerWeeklyReviewPage = () => {
     setErrorText('');
     try {
       const { data } = await axiosInstance.get('/api/manager/weekly-journals', {
-        params: { weekId: selectedWeekId, status: filterStatus === 'ALL' ? undefined : filterStatus }
+        params: { 
+          weekId: selectedWeekId, 
+          status: filterStatus === 'ALL' ? undefined : filterStatus,
+          unitId: unitId || undefined
+        }
       });
       const list = Array.isArray(data) ? data : [];
       setPendingLogs(list);
@@ -58,7 +82,7 @@ const ManagerWeeklyReviewPage = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedWeekId, filterStatus]);
+  }, [selectedWeekId, filterStatus, unitId]);
 
   const patchReview = async (status, managerComment) => {
     if (!selected) return;
@@ -96,8 +120,8 @@ const ManagerWeeklyReviewPage = () => {
     <div>
       <div className="page-head">
         <div>
-          <h2 style={{ margin: 0, color: '#0074ba' }}>Duyệt nhật ký tuần</h2>
-          <div className="page-subtitle">Đánh giá chi tiết nhật ký tuần của nhân viên</div>
+          <h2 style={{ margin: 0, color: '#0074ba' }}>{isViewerOnly ? 'Thống kê Mẫu 10, Mẫu 11' : 'Duyệt nhật ký tuần'}</h2>
+          <div className="page-subtitle">{isViewerOnly ? 'Xem chi tiết nhật ký tuần của nhân viên toàn tỉnh' : 'Đánh giá chi tiết nhật ký tuần của nhân viên'}</div>
         </div>
       </div>
 
@@ -106,6 +130,20 @@ const ManagerWeeklyReviewPage = () => {
           <div className="card" style={{ marginBottom: 12 }}>
             <h3 style={{ marginTop: 0 }}>Bộ lọc</h3>
             <div className="filters">
+              {(isViewerOnly || user?.role === 'ADMIN') && (
+                <select
+                  className="field"
+                  value={unitId}
+                  onChange={(e) => setUnitId(e.target.value)}
+                >
+                  <option value="">-- Tất cả đơn vị --</option>
+                  {units.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              )}
               <select
                 className="field"
                 value={selectedWeekId}
@@ -141,7 +179,9 @@ const ManagerWeeklyReviewPage = () => {
                 style={{ textAlign: 'left', display: 'block', width: '100%' }}
               >
                 <div style={{ fontWeight: 700, color: '#0f172a' }}>{log.user.fullName}</div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{log.user.username}</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                  {log.user.username} {isViewerOnly && log.user.unit?.name ? ` - ${log.user.unit.name}` : ''}
+                </div>
                 <div style={{ fontSize: 12, marginTop: 4 }}>
                   <span className={`review-chip ${log.status === 'APPROVED' ? 'ok' : log.status === 'REJECTED' ? 'err' : ''}`}>
                     {log.status === 'APPROVED' ? 'Đã duyệt' : log.status === 'REJECTED' ? 'Bị trả lại' : 'Chờ duyệt'}
@@ -179,6 +219,12 @@ const ManagerWeeklyReviewPage = () => {
                     <div className="review-label">Tài khoản</div>
                     <div className="review-value">{selected.user.username || '-'}</div>
                   </div>
+                  {isViewerOnly && (
+                    <div>
+                      <div className="review-label">Đơn vị</div>
+                      <div className="review-value">{selected.user.unit?.name || '-'}</div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -223,37 +269,40 @@ const ManagerWeeklyReviewPage = () => {
                     <textarea
                       className="field"
                       rows={4}
-                      placeholder="Nhập nhận xét..."
+                      placeholder={isViewerOnly ? "Không có nhận xét" : "Nhập nhận xét..."}
                       defaultValue={selected.managerComment || ''}
                       id="managerComment"
+                      disabled={isViewerOnly}
                     />
                   </div>
                   
-                  <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                    <button
-                      className="btn"
-                      disabled={saving}
-                      onClick={() => patchReview('APPROVED', document.getElementById('managerComment').value)}
-                      style={{ background: '#16a34a', borderColor: '#16a34a' }}
-                    >
-                      {saving ? 'Đang xử lý...' : 'Duyệt'}
-                    </button>
-                    <button
-                      className="btn outline"
-                      disabled={saving}
-                      onClick={() => patchReview(selected.status, document.getElementById('managerComment').value)}
-                    >
-                      Lưu
-                    </button>
-                    <button
-                      className="btn"
-                      disabled={saving}
-                      onClick={() => patchReview('REJECTED', document.getElementById('managerComment').value)}
-                      style={{ background: '#dc2626', borderColor: '#dc2626' }}
-                    >
-                      Trả lại
-                    </button>
-                  </div>
+                  {!isViewerOnly && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                      <button
+                        className="btn"
+                        disabled={saving}
+                        onClick={() => patchReview('APPROVED', document.getElementById('managerComment').value)}
+                        style={{ background: '#16a34a', borderColor: '#16a34a' }}
+                      >
+                        {saving ? 'Đang xử lý...' : 'Duyệt'}
+                      </button>
+                      <button
+                        className="btn outline"
+                        disabled={saving}
+                        onClick={() => patchReview(selected.status, document.getElementById('managerComment').value)}
+                      >
+                        Lưu
+                      </button>
+                      <button
+                        className="btn"
+                        disabled={saving}
+                        onClick={() => patchReview('REJECTED', document.getElementById('managerComment').value)}
+                        style={{ background: '#dc2626', borderColor: '#dc2626' }}
+                      >
+                        Trả lại
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </>
