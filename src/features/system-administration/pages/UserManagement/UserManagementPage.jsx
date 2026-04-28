@@ -46,6 +46,7 @@ const UserManagementPage = () => {
     itemSortOrder: 1,
     sttLabel: '',
     contentName: '',
+    employeeInputType: 'text',
     maxScore: 1,
     isActive: true,
   });
@@ -381,6 +382,7 @@ const UserManagementPage = () => {
       itemSortOrder: 1,
       sttLabel: '',
       contentName: '',
+      employeeInputType: 'text',
       maxScore: 1,
       isActive: true,
     });
@@ -424,6 +426,7 @@ const UserManagementPage = () => {
       itemSortOrder: Number(item.itemSortOrder || 0),
       sttLabel: item.sttLabel || '',
       contentName: item.contentName || '',
+      employeeInputType: item.employeeInputType || 'text',
       maxScore: Number(item.maxScore || 0),
       isActive: !!item.isActive,
     });
@@ -936,6 +939,16 @@ const UserManagementPage = () => {
                 value={criterionForm.contentName}
                 onChange={(e) => setCriterionForm((prev) => ({ ...prev, contentName: e.target.value }))}
               />
+              <select
+                className="field"
+                value={criterionForm.employeeInputType}
+                onChange={(e) =>
+                  setCriterionForm((prev) => ({ ...prev, employeeInputType: e.target.value }))
+                }
+              >
+                <option value="text">Nhân viên nhập text</option>
+                <option value="number">Nhân viên nhập number</option>
+              </select>
               <input
                 className="field"
                 type="number"
@@ -974,6 +987,7 @@ const UserManagementPage = () => {
                   <th>STT</th>
                   <th>itemCode</th>
                   <th>Nội dung</th>
+                  <th>Kiểu nhập NV</th>
                   <th>Điểm tối đa</th>
                   <th>Trạng thái</th>
                   <th>Thao tác</th>
@@ -994,6 +1008,7 @@ const UserManagementPage = () => {
                       <div style={{ color: '#64748b', fontSize: 12 }}>sort {item.itemSortOrder}</div>
                     </td>
                     <td>{item.contentName}</td>
+                    <td>{item.employeeInputType === 'number' ? 'number' : 'text'}</td>
                     <td>{Number(item.maxScore || 0)}</td>
                     <td>{item.isActive ? 'Kích hoạt' : 'Ngừng'}</td>
                     <td>

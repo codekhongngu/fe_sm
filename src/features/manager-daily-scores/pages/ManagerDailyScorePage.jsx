@@ -572,14 +572,24 @@ const FragmentSection = ({
             <div className="manager-daily-score-guide-box">{resolveScoreGuide(item.itemCode)}</div>
           </div>
           <div className="manager-daily-score-col note">
-            <textarea
-              className="field"
-              style={{ width: '100%', height: '100%', minHeight: 72, resize: 'vertical' }}
-              value={employeeNoteMap[item.id] || ''}
-              onChange={(e) => onChangeEmployeeNote(item.id, e.target.value)}
-              disabled={!canEditEmployeeNote}
-              placeholder="Nhân viên nhập nội dung..."
-            />
+            {item.employeeInputType === 'number' ? (
+              <input
+                type="number"
+                className="field manager-daily-score-note-field"
+                value={employeeNoteMap[item.id] || ''}
+                onChange={(e) => onChangeEmployeeNote(item.id, e.target.value)}
+                disabled={!canEditEmployeeNote}
+                placeholder="Nhân viên nhập số..."
+              />
+            ) : (
+              <textarea
+                className="field manager-daily-score-note-field"
+                value={employeeNoteMap[item.id] || ''}
+                onChange={(e) => onChangeEmployeeNote(item.id, e.target.value)}
+                disabled={!canEditEmployeeNote}
+                placeholder="Nhân viên nhập nội dung..."
+              />
+            )}
           </div>
           <div className="manager-daily-score-col score">
             <div style={{ marginBottom: 4, fontSize: 12, fontWeight: 600 }}>Tự đánh giá</div>

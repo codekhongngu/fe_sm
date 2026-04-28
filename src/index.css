@@ -1214,6 +1214,24 @@ textarea.field {
   color: #334155;
 }
 
+.manager-daily-score-col.note {
+  display: flex;
+  align-items: stretch;
+}
+
+.manager-daily-score-note-field {
+  width: 100%;
+  min-height: 72px;
+}
+
+input.manager-daily-score-note-field {
+  height: 72px;
+}
+
+textarea.manager-daily-score-note-field {
+  resize: vertical;
+}
+
 @media (max-width: 992px) {
   .manager-daily-score-filter-grid {
     grid-template-columns: 1fr;
