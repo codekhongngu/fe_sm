@@ -20,6 +20,24 @@ const journalService = {
   getJourneyPhaseConfigs: () => axiosInstance.get('/api/journey-phase-configs').then((res) => res.data),
   getWeeklyJournals: (weekId) =>
     axiosInstance.get('/api/weekly-journals', { params: { weekId } }).then((res) => res.data),
+  exportManagerWeeklyJournals: (params) =>
+    axiosInstance
+      .get('/api/manager/weekly-journals/export', { params, responseType: 'blob' })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
+          'bao-cao-duyet-nhat-ky-tuan.xlsx',
+      })),
+  exportManagerWeeklyJournalsStatus: (params) =>
+    axiosInstance
+      .get('/api/manager/weekly-journals/export-status', { params, responseType: 'blob' })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
+          'bao-cao-trang-thai-mau-10-11.xlsx',
+      })),
   submitWeeklyJournal: (payload) =>
     axiosInstance.post('/api/weekly-journals/submit', payload).then((res) => res.data),
   getApprovedJournals: (params) =>

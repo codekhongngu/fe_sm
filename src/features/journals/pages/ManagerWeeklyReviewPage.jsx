@@ -13,6 +13,8 @@ const ManagerWeeklyReviewPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportingStatus, setExportingStatus] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [statusText, setStatusText] = useState('');
   const [weeklyConfigs, setWeeklyConfigs] = useState([]);
@@ -116,6 +118,65 @@ const ManagerWeeklyReviewPage = () => {
 
   const formatDisplayText = (value, fallback = '-') => normalizeText(value) || fallback;
 
+  const exportWeeklyReview = async () => {
+    if (!selectedWeekId) {
+      setErrorText('Vui lòng chọn tuần để xuất báo cáo');
+      return;
+    }
+    setExporting(true);
+    setErrorText('');
+    setStatusText('');
+    try {
+      const result = await journalService.exportManagerWeeklyJournals({
+        weekId: selectedWeekId,
+        status: filterStatus === 'ALL' ? undefined : filterStatus,
+        unitId: unitId || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất báo cáo Excel nhật ký tuần');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất Excel thất bại');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportWeeklyStatus1011 = async () => {
+    if (!selectedWeekId) {
+      setErrorText('Vui lòng chọn tuần để xuất báo cáo');
+      return;
+    }
+    setExportingStatus(true);
+    setErrorText('');
+    setStatusText('');
+    try {
+      const result = await journalService.exportManagerWeeklyJournalsStatus({
+        weekId: selectedWeekId,
+        unitId: unitId || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất Excel trạng thái Mẫu 10/11');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất Excel trạng thái thất bại');
+    } finally {
+      setExportingStatus(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-head">
@@ -166,6 +227,14 @@ const ManagerWeeklyReviewPage = () => {
                 <option value="REJECTED">Bị trả lại</option>
                 <option value="ALL">Tất cả</option>
               </select>
+              <button className="btn" type="button" onClick={exportWeeklyReview} disabled={exporting}>
+                {exporting ? 'Đang xuất...' : 'Xuất Excel'}
+              </button>
+              {(isViewerOnly || user?.role === 'ADMIN') ? (
+                <button className="btn outline" type="button" onClick={exportWeeklyStatus1011} disabled={exportingStatus}>
+                  {exportingStatus ? 'Đang xuất...' : 'Xuất trạng thái Mẫu 10/11'}
+                </button>
+              ) : null}
             </div>
           </div>
 
