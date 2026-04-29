@@ -6,6 +6,7 @@ const SystemConfigPage = () => {
   const [cutoffHour, setCutoffHour] = useState('');
   const [cutoffHourManager, setCutoffHourManager] = useState('');
   const [disableCrossTimeManager, setDisableCrossTimeManager] = useState(false);
+  const [lockedEntryDatesText, setLockedEntryDatesText] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -24,6 +25,9 @@ const SystemConfigPage = () => {
         }
         if (res.data.disableCrossTimeManager !== undefined) {
           setDisableCrossTimeManager(res.data.disableCrossTimeManager);
+        }
+        if (Array.isArray(res.data.lockedEntryDates)) {
+          setLockedEntryDatesText(res.data.lockedEntryDates.join(', '));
         }
       }
     } catch (error) {
@@ -53,12 +57,23 @@ const SystemConfigPage = () => {
       return;
     }
 
+    const lockedEntryDates = String(lockedEntryDatesText || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const invalidDate = lockedEntryDates.find((item) => !/^\d{4}-\d{2}-\d{2}$/.test(item));
+    if (invalidDate) {
+      setErrorText(`Ngày khóa không hợp lệ: ${invalidDate}. Định dạng đúng là YYYY-MM-DD`);
+      return;
+    }
+
     setSaving(true);
     try {
       await axiosInstance.patch('/api/admin/system-configs', { 
         cutoffHour: hour,
         cutoffHourManager: hourManager,
-        disableCrossTimeManager
+        disableCrossTimeManager,
+        lockedEntryDates,
       });
       setStatusText('Lưu cấu hình thành công');
       BusinessTimeUtil.CUTOFF_HOUR = hour; // Cập nhật ngay trên bộ nhớ Frontend
@@ -139,6 +154,23 @@ const SystemConfigPage = () => {
             <div style={{ color: '#666', fontSize: '0.9em', marginTop: 8, marginLeft: 28 }}>
               Khi bật tùy chọn này, các tài khoản Quản lý (Manager/Admin) có thể chấm điểm, duyệt form và nhận xét cho bất kỳ ngày nào mà không bị chặn bởi giới hạn thời gian (cross time / cuối tuần).
             </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 30 }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>
+              Khóa nhập nhật ký/chấm điểm theo ngày
+            </label>
+            <div style={{ color: '#666', fontSize: '0.9em', marginBottom: 8 }}>
+              Nhập danh sách ngày cần khóa theo định dạng YYYY-MM-DD, ngăn cách bằng dấu phẩy.
+              Ví dụ: 2026-05-01, 2026-05-02
+            </div>
+            <textarea
+              className="field"
+              rows={3}
+              value={lockedEntryDatesText}
+              onChange={(e) => setLockedEntryDatesText(e.target.value)}
+              placeholder="2026-05-01, 2026-05-02"
+            />
           </div>
 
           <button className="btn" onClick={handleSave} disabled={saving}>
