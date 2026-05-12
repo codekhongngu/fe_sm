@@ -31,6 +31,7 @@ const ProvincialApprovedJournalsPage = () => {
   const [selectedApprovedForms, setSelectedApprovedForms] = useState([]);
   const [extraLogs, setExtraLogs] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [exportingForms2345, setExportingForms2345] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -113,6 +114,33 @@ const ProvincialApprovedJournalsPage = () => {
     }
   };
 
+  const exportApprovedForms2345Excel = async () => {
+    setErrorText('');
+    setStatusText('');
+    setExportingForms2345(true);
+    try {
+      const result = await journalService.exportApprovedJournalsForms2345({
+        fromDate,
+        toDate,
+        unitId: unitId || undefined,
+        keyword: keyword || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất file Excel báo cáo Mẫu 2/3/4/5');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất file Excel Mẫu 2/3/4/5 thất bại');
+    } finally {
+      setExportingForms2345(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-head">
@@ -140,6 +168,9 @@ const ProvincialApprovedJournalsPage = () => {
           <button className="btn outline" type="button" onClick={load}>Lọc</button>
           <button className="btn" type="button" onClick={exportApprovedStatusExcel} disabled={exporting}>
             {exporting ? 'Đang xuất...' : 'Xuất Excel Mẫu 01/03/08'}
+          </button>
+          <button className="btn outline" type="button" onClick={exportApprovedForms2345Excel} disabled={exportingForms2345}>
+            {exportingForms2345 ? 'Đang xuất...' : 'Xuất Excel Mẫu 2/3/4/5'}
           </button>
         </div>
       </section>
