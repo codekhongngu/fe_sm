@@ -33,6 +33,8 @@ const ManagerReviewPage = () => {
   const [toDate, setToDate] = useState(today);
   const [employeeKeyword, setEmployeeKeyword] = useState('');
   const [filterStatus, setFilterStatus] = useState('PENDING');
+  const [exportingStatus010308, setExportingStatus010308] = useState(false);
+  const [exportingForms2345, setExportingForms2345] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -178,6 +180,58 @@ const ManagerReviewPage = () => {
       setStatusText('Đã sao chép URL đánh giá riêng');
     } catch (error) {
       setErrorText('Không thể sao chép URL');
+    }
+  };
+
+  const exportApprovedStatusExcel = async () => {
+    setErrorText('');
+    setStatusText('');
+    setExportingStatus010308(true);
+    try {
+      const result = await journalService.exportApprovedJournalsStatus({
+        fromDate,
+        toDate,
+        keyword: employeeKeyword || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất file Excel Mẫu 01/03/08 theo đơn vị');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất file Excel Mẫu 01/03/08 thất bại');
+    } finally {
+      setExportingStatus010308(false);
+    }
+  };
+
+  const exportApprovedForms2345Excel = async () => {
+    setErrorText('');
+    setStatusText('');
+    setExportingForms2345(true);
+    try {
+      const result = await journalService.exportApprovedJournalsForms2345({
+        fromDate,
+        toDate,
+        keyword: employeeKeyword || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất file Excel Mẫu 2/3/4/5 theo đơn vị');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất file Excel Mẫu 2/3/4/5 thất bại');
+    } finally {
+      setExportingForms2345(false);
     }
   };
 
@@ -423,6 +477,24 @@ const ManagerReviewPage = () => {
               value={employeeKeyword}
               onChange={(e) => setEmployeeKeyword(e.target.value)}
             />
+          </div>
+          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={exportApprovedStatusExcel}
+              disabled={exportingStatus010308}
+            >
+              {exportingStatus010308 ? 'Đang xuất...' : 'Xuất Excel Mẫu 01/03/08'}
+            </button>
+            <button
+              type="button"
+              className="btn outline"
+              onClick={exportApprovedForms2345Excel}
+              disabled={exportingForms2345}
+            >
+              {exportingForms2345 ? 'Đang xuất...' : 'Xuất Excel Mẫu 2/3/4/5'}
+            </button>
           </div>
         </div>
 

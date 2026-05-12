@@ -57,6 +57,7 @@ const ManagerDailyScorePage = () => {
   const [fromDate, setFromDate] = useState(todayKey);
   const [toDate, setToDate] = useState(todayKey);
   const [stats, setStats] = useState(null);
+  const [exportingUnitReport, setExportingUnitReport] = useState(false);
 
   const allCriteria = useMemo(() => {
     if (!criteriaData?.criteria) {
@@ -263,6 +264,38 @@ const ManagerDailyScorePage = () => {
       setStatusText('Đã xuất file Excel thống kê');
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Xuất file Excel thất bại');
+    }
+  };
+
+  const exportUnitReport = async () => {
+    setErrorText('');
+    setStatusText('');
+    if (!fromDate || !toDate) {
+      setErrorText('Vui lòng chọn khoảng ngày');
+      return;
+    }
+    if (fromDate !== toDate) {
+      setErrorText('Báo cáo theo mẫu thống kê chỉ hỗ trợ 1 ngày (Từ ngày phải bằng Đến ngày)');
+      return;
+    }
+    setExportingUnitReport(true);
+    try {
+      const result = await managerDailyScoreService.exportUnitStatistics({
+        scoreDate: fromDate,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất file Excel báo cáo theo đơn vị');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất file Excel báo cáo thất bại');
+    } finally {
+      setExportingUnitReport(false);
     }
   };
 
@@ -484,6 +517,14 @@ const ManagerDailyScorePage = () => {
                   </button>
                   <button type="button" className="btn" onClick={exportStatistics}>
                     Xuất Excel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={exportUnitReport}
+                    disabled={exportingUnitReport}
+                  >
+                    {exportingUnitReport ? 'Đang xuất...' : 'Xuất báo cáo Excel'}
                   </button>
                 </div>
               </div>

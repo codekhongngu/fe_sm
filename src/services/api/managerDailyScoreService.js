@@ -35,6 +35,18 @@ const managerDailyScoreService = {
           res.headers?.['content-disposition']
             ?.match(/filename="?([^"]+)"?/)?.[1] || 'bao-cao-thong-ke-toan-tinh.xlsx',
       })),
+  exportUnitStatistics: (filters) =>
+    axiosInstance
+      .get('/manager-daily-scores/unit-statistics-export', {
+        params: filters,
+        responseType: 'blob',
+      })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']
+            ?.match(/filename="?([^"]+)"?/)?.[1] || 'bao-cao-thong-ke-don-vi.xlsx',
+      })),
   getAdminCriteria: () =>
     axiosInstance.get('/manager-daily-scores/admin/criteria').then((res) => res.data),
   createCriterion: (payload) =>
