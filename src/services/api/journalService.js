@@ -51,6 +51,18 @@ const journalService = {
           res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
           'bao-cao-mau-da-duyet.xlsx',
       })),
+  exportApprovedJournalsStatusForms2345: (params) =>
+    axiosInstance
+      .get('/api/manager/journals/approved/export-status-forms-2-3-4-5', {
+        params,
+        responseType: 'blob',
+      })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
+          'bao-cao-trang-thai-mau-2-3-4-5.xlsx',
+      })),
   exportApprovedJournalsForms2345: (params) =>
     axiosInstance
       .get('/api/manager/journals/approved/export-forms-2-3-4-5', { params, responseType: 'blob' })
