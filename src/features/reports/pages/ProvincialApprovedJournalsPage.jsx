@@ -17,6 +17,8 @@ const FORM_LABELS = {
 
 const today = new Date().toISOString().slice(0, 10);
 
+const normalizeDateKey = (value) => String(value || '').slice(0, 10);
+
 const ProvincialApprovedJournalsPage = () => {
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -61,9 +63,12 @@ const ProvincialApprovedJournalsPage = () => {
     try {
       const detail = await journalService.getById(item.id);
       const targetUserId = detail.userId || detail.user?.id;
-      const logDate = detail.reportDate;
+      const logDate = normalizeDateKey(detail.reportDate || item.reportDate);
       const logs = await journalService.getLogsHistory(targetUserId, logDate).catch(() => ({}));
-      setSelected(detail);
+      setSelected({
+        ...detail,
+        reportDate: logDate,
+      });
       setSelectedApprovedForms(item.approvedForms || []);
       setExtraLogs(logs || {});
     } catch (error) {
@@ -197,7 +202,7 @@ const ProvincialApprovedJournalsPage = () => {
             <tbody>
               {items.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.reportDate}</td>
+                  <td>{normalizeDateKey(item.reportDate)}</td>
                   <td>{item.user?.fullName || '-'}</td>
                   <td>{item.user?.username || '-'}</td>
                   <td>{(item.approvedForms || []).map((code) => FORM_LABELS[code] || code).join(', ')}</td>
