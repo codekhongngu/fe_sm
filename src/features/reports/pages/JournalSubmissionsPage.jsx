@@ -27,15 +27,15 @@ const JournalSubmissionsPage = () => {
     if (!stats || !stats.units) return;
 
     const rows = [
-      ['Tên đơn vị', 'Tên nhân viên', 'Ngày thực hiện', 'Trạng thái'],
+      ['Tên đơn vị', 'Tên nhân viên', 'Mã nhân viên', 'Ngày thực hiện', 'Trạng thái'],
     ];
 
     stats.units.forEach(unit => {
       unit.submittedUsers?.forEach(user => {
-        rows.push([unit.unitName, user.fullName || user.username, date, 'Đã nhập']);
+        rows.push([unit.unitName, user.fullName || user.username, user.employeeCode || '', date, 'Đã nhập']);
       });
       unit.notSubmittedUsers?.forEach(user => {
-        rows.push([unit.unitName, user.fullName || user.username, date, 'Chưa nhập']);
+        rows.push([unit.unitName, user.fullName || user.username, user.employeeCode || '', date, 'Chưa nhập']);
       });
     });
 

@@ -188,6 +188,7 @@ const WeeklyReportPage = () => {
     
     // Column Headers
     excelData.push([
+      'Mã nhân viên',
       'Tên nhân viên', 
       'Số KH gặp trong tuần', 
       'Tỷ lệ% có hỏi sâu', 
@@ -199,6 +200,7 @@ const WeeklyReportPage = () => {
     // Data rows
     weeklySummary.items.forEach(item => {
       excelData.push([
+        item.employeeCode || '',
         item.fullName,
         item.totalCustomerMet || 0,
         item.deepInquiryRate || 0,
@@ -212,6 +214,7 @@ const WeeklyReportPage = () => {
     
     // Auto width for columns
     const colWidths = [
+      { wch: 18 }, // Mã nhân viên
       { wch: 30 }, // Tên nhân viên
       { wch: 25 }, // Số KH gặp trong tuần
       { wch: 20 }, // Tỷ lệ% có hỏi sâu
