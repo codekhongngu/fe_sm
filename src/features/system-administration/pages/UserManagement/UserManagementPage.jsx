@@ -352,6 +352,25 @@ const UserManagementPage = () => {
     }
   };
 
+  const downloadEmployeeCodeTemplate = async () => {
+    setStatus('');
+    setErrorText('');
+    try {
+      const blob = await userService.downloadEmployeeCodeTemplate();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'user-employee-code-template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatus('Đã tải mẫu import mã nhân viên');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Không tải được mẫu import mã nhân viên');
+    }
+  };
+
   const startEditWeeklyConfig = (week) => {
     setEditingWeekId(week.id);
     setWeekName(week.weekName || '');
@@ -581,6 +600,9 @@ const UserManagementPage = () => {
               </button>
               <button className="btn outline" onClick={importEmployeeCodes}>
                 Import mã NV
+              </button>
+              <button className="btn outline" onClick={downloadEmployeeCodeTemplate}>
+                Tải mẫu mã NV
               </button>
               <button className="btn outline" onClick={downloadImportTemplate}>
                 Tải mẫu import

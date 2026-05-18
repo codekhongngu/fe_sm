@@ -40,6 +40,10 @@ const userService = {
     axiosInstance
       .get('/users/import-excel-template', { responseType: 'blob' })
       .then((res) => res.data),
+  downloadEmployeeCodeTemplate: () =>
+    axiosInstance
+      .get('/users/import-employee-codes-template', { responseType: 'blob' })
+      .then((res) => res.data),
 };
 
 export default userService;
