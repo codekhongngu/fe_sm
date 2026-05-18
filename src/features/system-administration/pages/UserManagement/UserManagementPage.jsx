@@ -22,12 +22,14 @@ const UserManagementPage = () => {
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newFullName, setNewFullName] = useState('');
+  const [newEmployeeCode, setNewEmployeeCode] = useState('');
   const [newUserRole, setNewUserRole] = useState('EMPLOYEE');
   const [newUserUnitId, setNewUserUnitId] = useState('');
   const [newTelegramChatId, setNewTelegramChatId] = useState('');
   const [editingUserId, setEditingUserId] = useState('');
   const [editUsername, setEditUsername] = useState('');
   const [editFullName, setEditFullName] = useState('');
+  const [editEmployeeCode, setEditEmployeeCode] = useState('');
   const [editUserRole, setEditUserRole] = useState('EMPLOYEE');
   const [editUserUnitId, setEditUserUnitId] = useState('');
   const [editTelegramChatId, setEditTelegramChatId] = useState('');
@@ -100,6 +102,25 @@ const UserManagementPage = () => {
       loadData();
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Import thất bại');
+    }
+  };
+
+  const importEmployeeCodes = async () => {
+    setStatus('');
+    setErrorText('');
+    if (!file) {
+      setErrorText('Vui lòng chọn file Excel');
+      return;
+    }
+    try {
+      const result = await userService.importEmployeeCodes(file);
+      setFile(null);
+      setStatus(
+        `Ánh xạ mã NV thành công: cập nhật ${result?.updatedCount || 0}, bỏ qua ${result?.skippedCount || 0}`,
+      );
+      loadData();
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Ánh xạ mã nhân viên thất bại');
     }
   };
 
@@ -204,6 +225,7 @@ const UserManagementPage = () => {
         username: newUsername,
         password: newPassword,
         fullName: newFullName,
+        employeeCode: newEmployeeCode || undefined,
         role: newUserRole,
         unitId: newUserUnitId,
         telegramChatId: newTelegramChatId || undefined,
@@ -211,6 +233,7 @@ const UserManagementPage = () => {
       setNewUsername('');
       setNewPassword('');
       setNewFullName('');
+      setNewEmployeeCode('');
       setNewUserRole('EMPLOYEE');
       setNewUserUnitId('');
       setNewTelegramChatId('');
@@ -225,6 +248,7 @@ const UserManagementPage = () => {
     setEditingUserId(user.id);
     setEditUsername(user.username || '');
     setEditFullName(user.fullName || '');
+    setEditEmployeeCode(user.employeeCode || '');
     setEditUserRole(user.role || 'EMPLOYEE');
     setEditUserUnitId(user.unitId || '');
     setEditTelegramChatId(user.telegramChatId || '');
@@ -242,6 +266,7 @@ const UserManagementPage = () => {
       await userService.updateUser(editingUserId, {
         username: editUsername,
         fullName: editFullName,
+        employeeCode: editEmployeeCode || undefined,
         role: editUserRole,
         unitId: editUserUnitId,
         telegramChatId: editTelegramChatId || undefined,
@@ -250,6 +275,7 @@ const UserManagementPage = () => {
       setEditingUserId('');
       setEditUsername('');
       setEditFullName('');
+      setEditEmployeeCode('');
       setEditUserRole('EMPLOYEE');
       setEditUserUnitId('');
       setEditTelegramChatId('');
@@ -445,7 +471,7 @@ const UserManagementPage = () => {
   };
 
   const filteredUsers = users.filter((user) => {
-    const text = `${user.fullName} ${user.username}`.toLowerCase();
+    const text = `${user.fullName} ${user.username} ${user.employeeCode || ''}`.toLowerCase();
     const matchSearch = !search || text.includes(search.toLowerCase());
     const matchUnit = !unitFilter || user.unitId === unitFilter;
     return matchSearch && matchUnit;
@@ -505,6 +531,12 @@ const UserManagementPage = () => {
               />
               <input
                 className="field"
+                placeholder="Mã nhân viên (không bắt buộc)"
+                value={newEmployeeCode}
+                onChange={(e) => setNewEmployeeCode(e.target.value)}
+              />
+              <input
+                className="field"
                 placeholder="Mật khẩu"
                 type="password"
                 value={newPassword}
@@ -547,6 +579,9 @@ const UserManagementPage = () => {
               <button className="btn outline" onClick={importExcel}>
                 Import Excel
               </button>
+              <button className="btn outline" onClick={importEmployeeCodes}>
+                Import mã NV
+              </button>
               <button className="btn outline" onClick={downloadImportTemplate}>
                 Tải mẫu import
               </button>
@@ -568,6 +603,12 @@ const UserManagementPage = () => {
                   placeholder="Username"
                   value={editUsername}
                   onChange={(e) => setEditUsername(e.target.value)}
+                />
+                <input
+                  className="field"
+                  placeholder="Mã nhân viên (không bắt buộc)"
+                  value={editEmployeeCode}
+                  onChange={(e) => setEditEmployeeCode(e.target.value)}
                 />
                 <select
                   className="field"
@@ -608,6 +649,7 @@ const UserManagementPage = () => {
                     setEditingUserId('');
                     setEditUsername('');
                     setEditFullName('');
+                    setEditEmployeeCode('');
                     setEditUserRole('EMPLOYEE');
                     setEditUserUnitId('');
                     setEditTelegramChatId('');
@@ -659,6 +701,9 @@ const UserManagementPage = () => {
                   <tr key={user.id}>
                     <td>
                       <div style={{ fontWeight: 700 }}>{user.fullName}</div>
+                      <div style={{ color: '#0f766e', fontSize: 12 }}>
+                        Mã NV: {user.employeeCode || '-'}
+                      </div>
                       <div style={{ color: '#64748b', fontSize: 12 }}>{user.username}</div>
                     </td>
                     <td>{user?.unit?.name || '-'}</td>

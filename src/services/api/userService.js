@@ -27,6 +27,15 @@ const userService = {
       })
       .then((res) => res.data);
   },
+  importEmployeeCodes: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return axiosInstance
+      .post('/users/import-employee-codes', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((res) => res.data);
+  },
   downloadImportTemplate: () =>
     axiosInstance
       .get('/users/import-excel-template', { responseType: 'blob' })
