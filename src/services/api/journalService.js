@@ -12,6 +12,8 @@ const journalService = {
     axiosInstance.post('/api/logs/submit', { formType, ...payload }).then((res) => res.data),
   getLogsHistory: (userId, logDate) =>
     axiosInstance.get('/api/logs/history', { params: { userId, logDate } }).then((res) => res.data),
+  getJourneyTimelineFormStatuses: (params) =>
+    axiosInstance.get('/api/journey/timeline-form-statuses', { params }).then((res) => res.data),
   shareTelegram: (payload) =>
     axiosInstance.post('/telegram/share', payload).then((res) => res.data),
   getList: (params) => axiosInstance.get('/journals', { params }).then((res) => res.data),

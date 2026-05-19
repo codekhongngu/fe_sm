@@ -67,6 +67,28 @@ const PHASE_FORM_MAP = {
   PHASE_3: ['form3', 'form4', 'form5', 'form7', 'form9', 'form12'],
 };
 
+const resolveAllowedFormsByDate = (dateKey, phaseConfigs) => {
+  const activePhaseConfigs = (Array.isArray(phaseConfigs) ? phaseConfigs : [])
+    .filter((item) => item?.isActive !== false)
+    .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+
+  const matched =
+    activePhaseConfigs.find(
+      (item) =>
+        item.startDate &&
+        item.endDate &&
+        dateKey >= item.startDate &&
+        dateKey <= item.endDate
+    ) || null;
+
+  if (matched && Array.isArray(matched.allowedForms) && matched.allowedForms.length > 0) {
+    return matched.allowedForms;
+  }
+
+  const phaseCode = String(matched?.phaseCode || '').toUpperCase();
+  return PHASE_FORM_MAP[phaseCode] || PHASE_FORM_MAP.PHASE_1;
+};
+
 const Journey90Page = () => {
   const { user } = useSelector(selectAuth);
   const isManager = user?.role === 'MANAGER' || user?.role === 'ADMIN';
@@ -80,6 +102,7 @@ const Journey90Page = () => {
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [journalsByDate, setJournalsByDate] = useState({});
+  const [timelineFormStatuses, setTimelineFormStatuses] = useState({});
   const [selectedDateKey, setSelectedDateKey] = useState('');
   const [selectedJournal, setSelectedJournal] = useState(null);
   const [timeFilter, setTimeFilter] = useState('last_90');
@@ -184,7 +207,13 @@ const Journey90Page = () => {
             ? statusFilter
             : undefined,
       };
-      const journals = await journalService.getList(params);
+      const [journals, timelineStatuses] = await Promise.all([
+        journalService.getList(params),
+        journalService.getJourneyTimelineFormStatuses({
+          fromDate: fromDate || undefined,
+          toDate: toDate || undefined,
+        }),
+      ]);
       const map = {};
       journals.forEach((journal) => {
         const key = journal.reportDate || toDateKey(new Date(journal.createdAt));
@@ -193,6 +222,7 @@ const Journey90Page = () => {
         }
       });
       setJournalsByDate(map);
+      setTimelineFormStatuses(timelineStatuses || {});
       setSelectedDateKey(toDateKey(getEffectiveToday(isManager)));
     } catch (error) {
       const msg = error?.response?.data?.message;
@@ -248,12 +278,21 @@ const Journey90Page = () => {
   }, [selectedDateKey, journalsByDate]);
 
   const cycleStartDateKey = useMemo(() => {
+    const phaseStartDate = (Array.isArray(phaseConfigs) ? phaseConfigs : [])
+      .filter((item) => item?.isActive !== false && item?.startDate)
+      .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)))[0]?.startDate;
+    if (phaseStartDate) {
+      return phaseStartDate;
+    }
+    if (fromDate) {
+      return fromDate;
+    }
     const keys = Object.keys(journalsByDate);
     if (keys.length === 0) {
       return toDateKey(getEffectiveToday(isManager));
     }
     return [...keys].sort()[0];
-  }, [journalsByDate, isManager]);
+  }, [phaseConfigs, fromDate, journalsByDate, isManager]);
 
   const timelineEntries = useMemo(() => {
     const startDate = fromDateKey(cycleStartDateKey);
@@ -264,12 +303,18 @@ const Journey90Page = () => {
       const dateKey = toDateKey(date);
       const journal = journalsByDate[dateKey];
       const isFuture = date > today;
+      const formStatuses = timelineFormStatuses[dateKey] || {};
+      const approvedStatuses = formStatuses.approved || {};
+      const allowedForms = resolveAllowedFormsByDate(dateKey, phaseConfigs);
+      const submittedForms = allowedForms.filter((formKey) => !!formStatuses[formKey]);
       let status = 'missed';
       if (isFuture) {
         status = 'future';
-      } else if (journal?.evaluation) {
+      } else if (submittedForms.length === 0) {
+        status = 'missed';
+      } else if (submittedForms.every((formKey) => !!approvedStatuses[formKey])) {
         status = 'graded';
-      } else if (journal?.awarenessSubmittedAt || journal?.standardsSubmittedAt) {
+      } else {
         status = 'pending';
       }
       return {
@@ -283,7 +328,7 @@ const Journey90Page = () => {
         ],
       };
     });
-  }, [journalsByDate, cycleStartDateKey]);
+  }, [journalsByDate, cycleStartDateKey, isManager, phaseConfigs, timelineFormStatuses]);
 
   const filteredEntries = useMemo(() => {
     const now = getEffectiveToday(isManager);
@@ -305,13 +350,16 @@ const Journey90Page = () => {
   }, [timelineEntries, timeFilter, statusFilter, fromDate, toDate]);
 
   const progress = useMemo(() => {
-    const submittedCount = timelineEntries.filter((entry) => entry.journalId).length;
+    const submittedCount = timelineEntries.filter(
+      (entry) => entry.status === 'pending' || entry.status === 'graded'
+    ).length;
     let streak = 0;
     const todayKey = toDateKey(getEffectiveToday(isManager));
     let cursor = fromDateKey(todayKey);
     while (true) {
       const key = toDateKey(cursor);
-      if (journalsByDate[key]) {
+      const entry = timelineEntries.find((item) => item.dateKey === key);
+      if (entry && (entry.status === 'pending' || entry.status === 'graded')) {
         streak += 1;
         cursor.setDate(cursor.getDate() - 1);
       } else {
@@ -325,7 +373,7 @@ const Journey90Page = () => {
       Math.min(90, Math.floor((now.getTime() - cycleStart.getTime()) / 86400000) + 1),
     );
     return { submittedCount, streak, currentDay };
-  }, [timelineEntries, journalsByDate, cycleStartDateKey, isManager]);
+  }, [timelineEntries, cycleStartDateKey, isManager]);
 
   const todayKey = toDateKey(getEffectiveToday(isManager));
   const todayJournal = journalsByDate[todayKey];
@@ -335,38 +383,13 @@ const Journey90Page = () => {
         const selectedDate = fromDateKey(selectedDateKey);
         const today = getEffectiveToday(isManager);
         if (selectedDate > today) return 'future';
-        if (selectedJournal?.evaluation) return 'graded';
-        if (
-          journalsByDate[selectedDateKey]?.awarenessSubmittedAt ||
-          journalsByDate[selectedDateKey]?.standardsSubmittedAt
-        ) {
-          return 'pending';
-        }
-        return 'missed';
+        return timelineEntries.find((entry) => entry.dateKey === selectedDateKey)?.status || 'missed';
       })()
     : 'missed';
 
   const availableForms = useMemo(() => {
-    const activePhaseConfigs = (Array.isArray(phaseConfigs) ? phaseConfigs : [])
-      .filter((item) => item?.isActive !== false)
-      .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-    
     const today = toDateKey(getEffectiveToday(isManager));
-    const matched =
-      activePhaseConfigs.find(
-        (item) =>
-          item.startDate &&
-          item.endDate &&
-          today >= item.startDate &&
-          today <= item.endDate
-      ) || null;
-
-    if (matched && Array.isArray(matched.allowedForms) && matched.allowedForms.length > 0) {
-      return matched.allowedForms;
-    }
-
-    const phaseCode = String(matched?.phaseCode || '').toUpperCase();
-    return PHASE_FORM_MAP[phaseCode] || PHASE_FORM_MAP.PHASE_1;
+    return resolveAllowedFormsByDate(today, phaseConfigs);
   }, [phaseConfigs, isManager]);
 
   useEffect(() => {
