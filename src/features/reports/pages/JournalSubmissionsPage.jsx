@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import journalService from '../../../services/api/journalService';
 
 const today = new Date().toISOString().slice(0, 10);
+const DAILY_VIEW = 'daily';
+const PHASE_VIEW = 'phase';
 const buildFormsMap = (forms) =>
   (Array.isArray(forms) ? forms : []).reduce((acc, item) => {
     acc[item.key] = item;
@@ -13,7 +15,17 @@ const JournalSubmissionsPage = () => {
   const [errorText, setErrorText] = useState('');
   const [date, setDate] = useState(today);
   const [stats, setStats] = useState(null);
+  const [activeView, setActiveView] = useState(DAILY_VIEW);
   const [selectedUsers, setSelectedUsers] = useState(null); // { title: string, users: array }
+
+  const sortedPhaseUnits = [...(stats?.phaseUnits || [])].sort((a, b) => {
+    const totalRateA = (a.forms || []).reduce((sum, form) => sum + Number(form.submittedRate || 0), 0);
+    const totalRateB = (b.forms || []).reduce((sum, form) => sum + Number(form.submittedRate || 0), 0);
+    if (totalRateB !== totalRateA) {
+      return totalRateB - totalRateA;
+    }
+    return String(a.unitName || '').localeCompare(String(b.unitName || ''), 'vi');
+  });
 
   const load = async () => {
     setLoading(true);
@@ -31,58 +43,245 @@ const JournalSubmissionsPage = () => {
   const exportExcel = () => {
     if (!stats || !stats.units) return;
 
-    const rows = [
-      ['Tên đơn vị', 'Tên nhân viên', 'Mã nhân viên', 'Ngày thực hiện', 'Trạng thái'],
-    ];
+    const rows =
+      activeView === PHASE_VIEW
+        ? (() => {
+            const phaseRows = [
+              ['THONG KE THEO MAU CUA GIAI DOAN'],
+              ['Ngay bao cao', date],
+              [
+                'Giai doan',
+                stats.phaseInfo
+                  ? `${stats.phaseInfo.phaseName || ''} (${stats.phaseInfo.phaseCode || ''})`.trim()
+                  : 'Mac dinh theo cau hinh',
+              ],
+              [],
+            ];
 
-    stats.units.forEach(unit => {
-      unit.submittedUsers?.forEach(user => {
-        rows.push([unit.unitName, user.fullName || user.username, user.employeeCode || '', date, 'Đã nhập']);
-      });
-      unit.notSubmittedUsers?.forEach(user => {
-        rows.push([unit.unitName, user.fullName || user.username, user.employeeCode || '', date, 'Chưa nhập']);
-      });
-    });
+            const phaseHeader = ['Đơn vị', 'Tổng NV'];
+            stats.phaseForms.forEach((form) => {
+              phaseHeader.push(`${form.label} - Đã nhập`, `${form.label} - Tỷ lệ`);
+            });
+            phaseRows.push(phaseHeader);
 
-    if (Array.isArray(stats.phaseForms) && stats.phaseForms.length > 0) {
-      rows.push([]);
-      rows.push(['THONG KE THEO MAU CUA GIAI DOAN']);
-      rows.push(['Ngay bao cao', date]);
-      rows.push([
-        'Giai doan',
-        stats.phaseInfo
-          ? `${stats.phaseInfo.phaseName || ''} (${stats.phaseInfo.phaseCode || ''})`.trim()
-          : 'Mac dinh theo cau hinh',
-      ]);
-      rows.push([]);
+            sortedPhaseUnits.forEach((unit) => {
+              const unitFormsMap = buildFormsMap(unit.forms);
+              const row = [unit.unitName, unit.total];
+              stats.phaseForms.forEach((form) => {
+                const currentForm = unitFormsMap[form.key] || {};
+                row.push(currentForm.submitted || 0, `${currentForm.submittedRate || 0}%`);
+              });
+              phaseRows.push(row);
+            });
 
-      const phaseHeader = ['Đơn vị', 'Tổng NV'];
-      stats.phaseForms.forEach((form) => {
-        phaseHeader.push(`${form.label} - Đã nhập`, `${form.label} - Tỷ lệ`);
-      });
-      rows.push(phaseHeader);
+            return phaseRows;
+          })()
+        : (() => {
+            const dailyRows = [
+              ['Tên đơn vị', 'Tên nhân viên', 'Mã nhân viên', 'Ngày thực hiện', 'Trạng thái'],
+            ];
+            stats.units.forEach((unit) => {
+              unit.submittedUsers?.forEach((user) => {
+                dailyRows.push([
+                  unit.unitName,
+                  user.fullName || user.username,
+                  user.employeeCode || '',
+                  date,
+                  'Đã nhập',
+                ]);
+              });
+              unit.notSubmittedUsers?.forEach((user) => {
+                dailyRows.push([
+                  unit.unitName,
+                  user.fullName || user.username,
+                  user.employeeCode || '',
+                  date,
+                  'Chưa nhập',
+                ]);
+              });
+            });
+            return dailyRows;
+          })();
 
-      (stats.phaseUnits || []).forEach((unit) => {
-        const unitFormsMap = buildFormsMap(unit.forms);
-        const row = [unit.unitName, unit.total];
-        stats.phaseForms.forEach((form) => {
-          const currentForm = unitFormsMap[form.key] || {};
-          row.push(currentForm.submitted || 0, `${currentForm.submittedRate || 0}%`);
-        });
-        rows.push(row);
-      });
-    }
+    const fileName =
+      activeView === PHASE_VIEW
+        ? `thong-ke-giai-doan-${date}.csv`
+        : `thong-ke-nhat-ky-${date}.csv`;
 
     const csv = rows.map((row) => row.map((col) => `"${String(col || '')}"`).join(',')).join('\n');
     const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `thong-ke-nhat-ky-${date}.csv`;
+    link.download = fileName;
     link.click();
     URL.revokeObjectURL(url);
   };
 
+  const tabButtonStyle = (isActive) => ({
+    padding: '10px 16px',
+    borderRadius: 8,
+    border: `1px solid ${isActive ? '#2563eb' : '#cbd5e1'}`,
+    background: isActive ? '#eff6ff' : '#fff',
+    color: isActive ? '#1d4ed8' : '#334155',
+    fontWeight: isActive ? 700 : 500,
+    cursor: 'pointer',
+  });
+
+  const renderDailyStats = () => (
+    <div className="card">
+      <div style={{ marginBottom: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+        <div style={{ marginBottom: 8, fontSize: 14, color: '#64748b' }}>
+          *Lưu ý: Tỷ lệ nhập nhật ký tính cho ngày <strong>{date}</strong>.
+        </div>
+        <div style={{ display: 'flex', gap: 24 }}>
+          <div>Tổng NV toàn tỉnh: <strong>{stats?.province?.total || 0}</strong></div>
+          <div>Đã nhập: <strong style={{ color: '#0f766e' }}>{stats?.province?.submitted || 0}</strong> ({stats?.province?.submittedRate || 0}%)</div>
+          <div>Chưa nhập: <strong style={{ color: '#b45309' }}>{stats?.province?.notSubmitted || 0}</strong> ({stats?.province?.notSubmittedRate || 0}%)</div>
+        </div>
+      </div>
+
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Đơn vị</th>
+              <th>Tổng NV</th>
+              <th>Đã nhập</th>
+              <th>Tỷ lệ đã nhập</th>
+              <th>Chưa nhập</th>
+              <th>Tỷ lệ chưa nhập</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(stats?.units || []).map((row) => (
+              <tr key={row.unitId}>
+                <td>{row.unitName}</td>
+                <td>{row.total}</td>
+                <td>
+                  {row.submitted > 0 ? (
+                    <span
+                      style={{ color: '#0f766e', cursor: 'pointer', textDecoration: 'underline' }}
+                      onClick={() => setSelectedUsers({ title: `Đã nhập - ${row.unitName}`, users: row.submittedUsers })}
+                    >
+                      {row.submitted}
+                    </span>
+                  ) : (
+                    row.submitted
+                  )}
+                </td>
+                <td><strong style={{ color: '#0f766e' }}>{row.submittedRate}%</strong></td>
+                <td>
+                  {row.notSubmitted > 0 ? (
+                    <span
+                      style={{ color: '#b45309', cursor: 'pointer', textDecoration: 'underline' }}
+                      onClick={() => setSelectedUsers({ title: `Chưa nhập - ${row.unitName}`, users: row.notSubmittedUsers })}
+                    >
+                      {row.notSubmitted}
+                    </span>
+                  ) : (
+                    row.notSubmitted
+                  )}
+                </td>
+                <td><strong style={{ color: '#b45309' }}>{row.notSubmittedRate}%</strong></td>
+              </tr>
+            ))}
+            {!loading && (!stats?.units || stats.units.length === 0) ? (
+              <tr><td colSpan={6}>Không có dữ liệu</td></tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderPhaseStats = () => (
+    <div className="card">
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: 0 }}>Thống kê theo mẫu của giai đoạn</h3>
+        <div style={{ marginTop: 6, fontSize: 14, color: '#64748b' }}>
+          {stats?.phaseInfo
+            ? `Áp dụng ${stats.phaseInfo.phaseName || ''} (${stats.phaseInfo.phaseCode || ''}) từ ${stats.phaseInfo.startDate || '--'} đến ${stats.phaseInfo.endDate || '--'}`
+            : 'Chưa xác định được giai đoạn theo ngày báo cáo, đang dùng cấu hình mặc định.'}
+        </div>
+        <div style={{ marginTop: 6, fontSize: 13, color: '#64748b' }}>
+          Danh sách đơn vị đang được sắp xếp theo mức độ hoàn thành giảm dần.
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+          <div>Tổng NV áp dụng: <strong>{stats?.phaseProvince?.total || 0}</strong></div>
+          {(stats?.phaseForms || []).map((form) => (
+            <div key={form.key}>
+              {form.label}: <strong style={{ color: '#0f766e' }}>{form.submitted || 0}</strong> ({form.submittedRate || 0}%)
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Đơn vị</th>
+              <th>Tổng NV</th>
+              {(stats?.phaseForms || []).map((form) => (
+                <th key={`${form.key}-submitted`}>{form.label}</th>
+              ))}
+              {(stats?.phaseForms || []).map((form) => (
+                <th key={`${form.key}-rate`}>Tỷ lệ {form.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedPhaseUnits.map((row) => {
+              const unitFormsMap = buildFormsMap(row.forms);
+              return (
+                <tr key={`phase-${row.unitId}`}>
+                  <td>{row.unitName}</td>
+                  <td>{row.total}</td>
+                  {(stats?.phaseForms || []).map((form) => {
+                    const currentForm = unitFormsMap[form.key] || {};
+                    return (
+                      <td key={`${row.unitId}-${form.key}`}>
+                        {(currentForm.submitted || 0) > 0 ? (
+                          <span
+                            style={{ color: '#0f766e', cursor: 'pointer', textDecoration: 'underline' }}
+                            onClick={() =>
+                              setSelectedUsers({
+                                title: `${form.label} - ${row.unitName}`,
+                                users: currentForm.submittedUsers || [],
+                              })
+                            }
+                          >
+                            {currentForm.submitted || 0}
+                          </span>
+                        ) : (
+                          currentForm.submitted || 0
+                        )}
+                      </td>
+                    );
+                  })}
+                  {(stats?.phaseForms || []).map((form) => {
+                    const currentForm = unitFormsMap[form.key] || {};
+                    return (
+                      <td key={`${row.unitId}-${form.key}-rate`}>
+                        <strong style={{ color: '#0f766e' }}>{currentForm.submittedRate || 0}%</strong>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+            {!loading && sortedPhaseUnits.length === 0 ? (
+              <tr><td colSpan={2 + ((stats?.phaseForms || []).length * 2 || 0)}>Không có dữ liệu</td></tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,153 +322,26 @@ const JournalSubmissionsPage = () => {
         </div>
       </div>
 
-      <div className="card">
-        <div style={{ marginBottom: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-          <div style={{ marginBottom: 8, fontSize: 14, color: '#64748b' }}>
-            *Lưu ý: Tỷ lệ nhập nhật ký tính cho ngày <strong>{date}</strong>.
-          </div>
-          <div style={{ display: 'flex', gap: 24 }}>
-            <div>Tổng NV toàn tỉnh: <strong>{stats?.province?.total || 0}</strong></div>
-            <div>Đã nhập: <strong style={{ color: '#0f766e' }}>{stats?.province?.submitted || 0}</strong> ({stats?.province?.submittedRate || 0}%)</div>
-            <div>Chưa nhập: <strong style={{ color: '#b45309' }}>{stats?.province?.notSubmitted || 0}</strong> ({stats?.province?.notSubmittedRate || 0}%)</div>
-          </div>
-        </div>
-
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Đơn vị</th>
-                <th>Tổng NV</th>
-                <th>Đã nhập</th>
-                <th>Tỷ lệ đã nhập</th>
-                <th>Chưa nhập</th>
-                <th>Tỷ lệ chưa nhập</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(stats?.units || []).map((row) => (
-                <tr key={row.unitId}>
-                  <td>{row.unitName}</td>
-                  <td>{row.total}</td>
-                  <td>
-                    {row.submitted > 0 ? (
-                      <span
-                        style={{ color: '#0f766e', cursor: 'pointer', textDecoration: 'underline' }}
-                        onClick={() => setSelectedUsers({ title: `Đã nhập - ${row.unitName}`, users: row.submittedUsers })}
-                      >
-                        {row.submitted}
-                      </span>
-                    ) : (
-                      row.submitted
-                    )}
-                  </td>
-                  <td><strong style={{ color: '#0f766e' }}>{row.submittedRate}%</strong></td>
-                  <td>
-                    {row.notSubmitted > 0 ? (
-                      <span
-                        style={{ color: '#b45309', cursor: 'pointer', textDecoration: 'underline' }}
-                        onClick={() => setSelectedUsers({ title: `Chưa nhập - ${row.unitName}`, users: row.notSubmittedUsers })}
-                      >
-                        {row.notSubmitted}
-                      </span>
-                    ) : (
-                      row.notSubmitted
-                    )}
-                  </td>
-                  <td><strong style={{ color: '#b45309' }}>{row.notSubmittedRate}%</strong></td>
-                </tr>
-              ))}
-              {!loading && (!stats?.units || stats.units.length === 0) ? (
-                <tr><td colSpan={6}>Không có dữ liệu</td></tr>
-              ) : null}
-            </tbody>
-          </table>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            style={tabButtonStyle(activeView === DAILY_VIEW)}
+            onClick={() => setActiveView(DAILY_VIEW)}
+          >
+            Thống kê theo ngày
+          </button>
+          <button
+            type="button"
+            style={tabButtonStyle(activeView === PHASE_VIEW)}
+            onClick={() => setActiveView(PHASE_VIEW)}
+          >
+            Thống kê theo mẫu giai đoạn
+          </button>
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: 0 }}>Thống kê theo mẫu của giai đoạn</h3>
-          <div style={{ marginTop: 6, fontSize: 14, color: '#64748b' }}>
-            {stats?.phaseInfo
-              ? `Áp dụng ${stats.phaseInfo.phaseName || ''} (${stats.phaseInfo.phaseCode || ''}) từ ${stats.phaseInfo.startDate || '--'} đến ${stats.phaseInfo.endDate || '--'}`
-              : 'Chưa xác định được giai đoạn theo ngày báo cáo, đang dùng cấu hình mặc định.'}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            <div>Tổng NV áp dụng: <strong>{stats?.phaseProvince?.total || 0}</strong></div>
-            {(stats?.phaseForms || []).map((form) => (
-              <div key={form.key}>
-                {form.label}: <strong style={{ color: '#0f766e' }}>{form.submitted || 0}</strong> ({form.submittedRate || 0}%)
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Đơn vị</th>
-                <th>Tổng NV</th>
-                {(stats?.phaseForms || []).map((form) => (
-                  <th key={`${form.key}-submitted`}>{form.label}</th>
-                ))}
-                {(stats?.phaseForms || []).map((form) => (
-                  <th key={`${form.key}-rate`}>Tỷ lệ {form.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(stats?.phaseUnits || []).map((row) => {
-                const unitFormsMap = buildFormsMap(row.forms);
-                return (
-                  <tr key={`phase-${row.unitId}`}>
-                    <td>{row.unitName}</td>
-                    <td>{row.total}</td>
-                    {(stats?.phaseForms || []).map((form) => {
-                      const currentForm = unitFormsMap[form.key] || {};
-                      return (
-                        <td key={`${row.unitId}-${form.key}`}>
-                          {(currentForm.submitted || 0) > 0 ? (
-                            <span
-                              style={{ color: '#0f766e', cursor: 'pointer', textDecoration: 'underline' }}
-                              onClick={() =>
-                                setSelectedUsers({
-                                  title: `${form.label} - ${row.unitName}`,
-                                  users: currentForm.submittedUsers || [],
-                                })
-                              }
-                            >
-                              {currentForm.submitted || 0}
-                            </span>
-                          ) : (
-                            currentForm.submitted || 0
-                          )}
-                        </td>
-                      );
-                    })}
-                    {(stats?.phaseForms || []).map((form) => {
-                      const currentForm = unitFormsMap[form.key] || {};
-                      return (
-                        <td key={`${row.unitId}-${form.key}-rate`}>
-                          <strong style={{ color: '#0f766e' }}>{currentForm.submittedRate || 0}%</strong>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-              {!loading && (!stats?.phaseUnits || stats.phaseUnits.length === 0) ? (
-                <tr><td colSpan={2 + ((stats?.phaseForms || []).length * 2 || 0)}>Không có dữ liệu</td></tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {activeView === DAILY_VIEW ? renderDailyStats() : renderPhaseStats()}
 
       {selectedUsers && (
         <div className="simple-modal-backdrop" onClick={() => setSelectedUsers(null)}>

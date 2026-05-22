@@ -357,6 +357,8 @@ const Journey90Page = () => {
     });
   }, [timelineEntries, timeFilter, statusFilter, fromDate, toDate]);
 
+  const todayKey = toDateKey(getEffectiveToday(isManager));
+
   useEffect(() => {
     if (filteredEntries.length === 0) {
       return;
@@ -402,7 +404,6 @@ const Journey90Page = () => {
     return { submittedCount, streak, currentDay };
   }, [timelineEntries, cycleStartDateKey, isManager]);
 
-  const todayKey = toDateKey(getEffectiveToday(isManager));
   const todayJournal = journalsByDate[todayKey];
 
   const selectedStatus = selectedDateKey
