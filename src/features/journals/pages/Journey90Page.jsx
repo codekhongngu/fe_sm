@@ -61,6 +61,11 @@ const getStartOfWeek = (date) => {
   return start;
 };
 
+const isWeekendDateKey = (dateKey) => {
+  const day = fromDateKey(dateKey).getDay();
+  return day === 0 || day === 6;
+};
+
 const PHASE_FORM_MAP = {
   PHASE_1: ['awareness', 'form3', 'form8'],
   PHASE_2: ['behavior', 'form3', 'form4', 'form5'],
@@ -335,6 +340,9 @@ const Journey90Page = () => {
     const startOfWeek = getStartOfWeek(now);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     return timelineEntries.filter((entry) => {
+      if (isWeekendDateKey(entry.dateKey)) {
+        return false;
+      }
       const date = fromDateKey(entry.dateKey);
       let matchTime = true;
       if (timeFilter === 'this_week') {
@@ -348,6 +356,25 @@ const Journey90Page = () => {
       return matchTime && matchRange && matchStatus;
     });
   }, [timelineEntries, timeFilter, statusFilter, fromDate, toDate]);
+
+  useEffect(() => {
+    if (filteredEntries.length === 0) {
+      return;
+    }
+    const isSelectedVisible = filteredEntries.some((entry) => entry.dateKey === selectedDateKey);
+    if (isSelectedVisible) {
+      return;
+    }
+    const fallbackEntry =
+      [...filteredEntries]
+        .reverse()
+        .find((entry) => entry.dateKey <= todayKey && entry.status !== 'future') ||
+      filteredEntries[filteredEntries.length - 1] ||
+      filteredEntries[0];
+    if (fallbackEntry?.dateKey && fallbackEntry.dateKey !== selectedDateKey) {
+      setSelectedDateKey(fallbackEntry.dateKey);
+    }
+  }, [filteredEntries, selectedDateKey, todayKey]);
 
   const progress = useMemo(() => {
     const submittedCount = timelineEntries.filter(

@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import journalService from '../../../services/api/journalService';
 
 const today = new Date().toISOString().slice(0, 10);
+const buildFormsMap = (forms) =>
+  (Array.isArray(forms) ? forms : []).reduce((acc, item) => {
+    acc[item.key] = item;
+    return acc;
+  }, {});
 
 const JournalSubmissionsPage = () => {
   const [loading, setLoading] = useState(false);
@@ -39,6 +44,35 @@ const JournalSubmissionsPage = () => {
       });
     });
 
+    if (Array.isArray(stats.phaseForms) && stats.phaseForms.length > 0) {
+      rows.push([]);
+      rows.push(['THONG KE THEO MAU CUA GIAI DOAN']);
+      rows.push(['Ngay bao cao', date]);
+      rows.push([
+        'Giai doan',
+        stats.phaseInfo
+          ? `${stats.phaseInfo.phaseName || ''} (${stats.phaseInfo.phaseCode || ''})`.trim()
+          : 'Mac dinh theo cau hinh',
+      ]);
+      rows.push([]);
+
+      const phaseHeader = ['Đơn vị', 'Tổng NV'];
+      stats.phaseForms.forEach((form) => {
+        phaseHeader.push(`${form.label} - Đã nhập`, `${form.label} - Tỷ lệ`);
+      });
+      rows.push(phaseHeader);
+
+      (stats.phaseUnits || []).forEach((unit) => {
+        const unitFormsMap = buildFormsMap(unit.forms);
+        const row = [unit.unitName, unit.total];
+        stats.phaseForms.forEach((form) => {
+          const currentForm = unitFormsMap[form.key] || {};
+          row.push(currentForm.submitted || 0, `${currentForm.submittedRate || 0}%`);
+        });
+        rows.push(row);
+      });
+    }
+
     const csv = rows.map((row) => row.map((col) => `"${String(col || '')}"`).join(',')).join('\n');
     const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -59,7 +93,7 @@ const JournalSubmissionsPage = () => {
       <div className="page-head">
         <div>
           <h2 style={{ margin: 0 }}>Tỷ lệ nhập nhật ký</h2>
-          <div className="page-subtitle">Thống kê số lượng nhân viên đã và chưa nhập nhật ký theo ngày</div>
+          <div className="page-subtitle">Thống kê theo ngày và theo các mẫu của giai đoạn</div>
         </div>
       </div>
       {errorText ? <div className="status-err" style={{ marginBottom: 10 }}>{errorText}</div> : null}
@@ -154,6 +188,89 @@ const JournalSubmissionsPage = () => {
         </div>
       </div>
 
+      <div className="card" style={{ marginTop: 16 }}>
+        <div style={{ marginBottom: 12 }}>
+          <h3 style={{ margin: 0 }}>Thống kê theo mẫu của giai đoạn</h3>
+          <div style={{ marginTop: 6, fontSize: 14, color: '#64748b' }}>
+            {stats?.phaseInfo
+              ? `Áp dụng ${stats.phaseInfo.phaseName || ''} (${stats.phaseInfo.phaseCode || ''}) từ ${stats.phaseInfo.startDate || '--'} đến ${stats.phaseInfo.endDate || '--'}`
+              : 'Chưa xác định được giai đoạn theo ngày báo cáo, đang dùng cấu hình mặc định.'}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <div>Tổng NV áp dụng: <strong>{stats?.phaseProvince?.total || 0}</strong></div>
+            {(stats?.phaseForms || []).map((form) => (
+              <div key={form.key}>
+                {form.label}: <strong style={{ color: '#0f766e' }}>{form.submitted || 0}</strong> ({form.submittedRate || 0}%)
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Đơn vị</th>
+                <th>Tổng NV</th>
+                {(stats?.phaseForms || []).map((form) => (
+                  <th key={`${form.key}-submitted`}>{form.label}</th>
+                ))}
+                {(stats?.phaseForms || []).map((form) => (
+                  <th key={`${form.key}-rate`}>Tỷ lệ {form.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(stats?.phaseUnits || []).map((row) => {
+                const unitFormsMap = buildFormsMap(row.forms);
+                return (
+                  <tr key={`phase-${row.unitId}`}>
+                    <td>{row.unitName}</td>
+                    <td>{row.total}</td>
+                    {(stats?.phaseForms || []).map((form) => {
+                      const currentForm = unitFormsMap[form.key] || {};
+                      return (
+                        <td key={`${row.unitId}-${form.key}`}>
+                          {(currentForm.submitted || 0) > 0 ? (
+                            <span
+                              style={{ color: '#0f766e', cursor: 'pointer', textDecoration: 'underline' }}
+                              onClick={() =>
+                                setSelectedUsers({
+                                  title: `${form.label} - ${row.unitName}`,
+                                  users: currentForm.submittedUsers || [],
+                                })
+                              }
+                            >
+                              {currentForm.submitted || 0}
+                            </span>
+                          ) : (
+                            currentForm.submitted || 0
+                          )}
+                        </td>
+                      );
+                    })}
+                    {(stats?.phaseForms || []).map((form) => {
+                      const currentForm = unitFormsMap[form.key] || {};
+                      return (
+                        <td key={`${row.unitId}-${form.key}-rate`}>
+                          <strong style={{ color: '#0f766e' }}>{currentForm.submittedRate || 0}%</strong>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+              {!loading && (!stats?.phaseUnits || stats.phaseUnits.length === 0) ? (
+                <tr><td colSpan={2 + ((stats?.phaseForms || []).length * 2 || 0)}>Không có dữ liệu</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {selectedUsers && (
         <div className="simple-modal-backdrop" onClick={() => setSelectedUsers(null)}>
           <div className="simple-modal" onClick={(e) => e.stopPropagation()} style={{ minWidth: 400 }}>
@@ -164,17 +281,19 @@ const JournalSubmissionsPage = () => {
                   <tr>
                     <th>Họ và tên</th>
                     <th>Tên tài khoản (Username)</th>
+                    <th>Mã nhân viên</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedUsers.users.map((u) => (
+                  {(selectedUsers.users || []).map((u) => (
                     <tr key={u.id}>
                       <td>{u.fullName}</td>
                       <td>{u.username}</td>
+                      <td>{u.employeeCode || ''}</td>
                     </tr>
                   ))}
-                  {selectedUsers.users.length === 0 && (
-                    <tr><td colSpan={2}>Không có nhân viên</td></tr>
+                  {(selectedUsers.users || []).length === 0 && (
+                    <tr><td colSpan={3}>Không có nhân viên</td></tr>
                   )}
                 </tbody>
               </table>
