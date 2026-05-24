@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import journalService from '../../../services/api/journalService';
+import * as XLSX from 'xlsx';
 
 const today = new Date().toISOString().slice(0, 10);
 const DAILY_VIEW = 'daily';
@@ -47,13 +48,13 @@ const JournalSubmissionsPage = () => {
       activeView === PHASE_VIEW
         ? (() => {
             const phaseRows = [
-              ['THONG KE THEO MAU CUA GIAI DOAN'],
-              ['Ngay bao cao', date],
+              ['THỐNG KÊ THEO MẪU CỦA GIAI ĐOẠN'],
+              ['Ngày báo cáo', date],
               [
-                'Giai doan',
+                'Giai đoạn',
                 stats.phaseInfo
                   ? `${stats.phaseInfo.phaseName || ''} (${stats.phaseInfo.phaseCode || ''})`.trim()
-                  : 'Mac dinh theo cau hinh',
+                  : 'Mặc định theo cấu hình',
               ],
               [],
             ];
@@ -105,17 +106,36 @@ const JournalSubmissionsPage = () => {
 
     const fileName =
       activeView === PHASE_VIEW
-        ? `thong-ke-giai-doan-${date}.csv`
-        : `thong-ke-nhat-ky-${date}.csv`;
+        ? `thong-ke-giai-doan-${date}.xlsx`
+        : `thong-ke-nhat-ky-${date}.xlsx`;
+    const sheetName = activeView === PHASE_VIEW ? 'ThongKeGiaiDoan' : 'ThongKeNgay';
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
 
-    const csv = rows.map((row) => row.map((col) => `"${String(col || '')}"`).join(',')).join('\n');
-    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
+    worksheet['!cols'] =
+      activeView === PHASE_VIEW
+        ? [
+            { wch: 28 },
+            { wch: 12 },
+            ...((stats?.phaseForms || []).flatMap(() => [{ wch: 16 }, { wch: 14 }])),
+          ]
+        : [
+            { wch: 28 },
+            { wch: 28 },
+            { wch: 16 },
+            { wch: 16 },
+            { wch: 14 },
+          ];
+
+    if (activeView === PHASE_VIEW) {
+      const phaseColumnCount = 2 + (stats?.phaseForms || []).length * 2;
+      worksheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(phaseColumnCount - 1, 0) } },
+      ];
+    }
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    XLSX.writeFile(workbook, fileName);
   };
 
   const tabButtonStyle = (isActive) => ({
