@@ -15,6 +15,7 @@ const ManagerWeeklyReviewPage = () => {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportingStatus, setExportingStatus] = useState(false);
+  const [exportingStatusByUnit, setExportingStatusByUnit] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [statusText, setStatusText] = useState('');
   const [weeklyConfigs, setWeeklyConfigs] = useState([]);
@@ -177,6 +178,35 @@ const ManagerWeeklyReviewPage = () => {
     }
   };
 
+  const exportWeeklyStatus1011ByUnit = async () => {
+    if (!selectedWeekId) {
+      setErrorText('Vui lòng chọn tuần để xuất báo cáo');
+      return;
+    }
+    setExportingStatusByUnit(true);
+    setErrorText('');
+    setStatusText('');
+    try {
+      const result = await journalService.exportManagerWeeklyJournalsStatusByUnit({
+        weekId: selectedWeekId,
+        unitId: unitId || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất Excel theo đơn vị có tỷ lệ % cho Mẫu 10/11');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất Excel theo đơn vị thất bại');
+    } finally {
+      setExportingStatusByUnit(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-head">
@@ -232,6 +262,14 @@ const ManagerWeeklyReviewPage = () => {
               </button>
               <button className="btn outline" type="button" onClick={exportWeeklyStatus1011} disabled={exportingStatus}>
                 {exportingStatus ? 'Đang xuất...' : 'Xuất Excel Mẫu 10/11'}
+              </button>
+              <button
+                className="btn outline"
+                type="button"
+                onClick={exportWeeklyStatus1011ByUnit}
+                disabled={exportingStatusByUnit}
+              >
+                {exportingStatusByUnit ? 'Đang xuất...' : 'Xuất theo đơn vị (%)'}
               </button>
             </div>
           </div>

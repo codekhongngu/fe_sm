@@ -40,6 +40,18 @@ const journalService = {
           res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
           'bao-cao-trang-thai-mau-10-11.xlsx',
       })),
+  exportManagerWeeklyJournalsStatusByUnit: (params) =>
+    axiosInstance
+      .get('/api/manager/weekly-journals/export-status-by-unit', {
+        params,
+        responseType: 'blob',
+      })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
+          'bao-cao-mau-10-11-theo-don-vi.xlsx',
+      })),
   submitWeeklyJournal: (payload) =>
     axiosInstance.post('/api/weekly-journals/submit', payload).then((res) => res.data),
   getApprovedJournals: (params) =>
