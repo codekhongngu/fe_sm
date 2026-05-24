@@ -230,11 +230,9 @@ const ManagerWeeklyReviewPage = () => {
               <button className="btn" type="button" onClick={exportWeeklyReview} disabled={exporting}>
                 {exporting ? 'Đang xuất...' : 'Xuất Excel'}
               </button>
-              {(isViewerOnly || user?.role === 'ADMIN') ? (
-                <button className="btn outline" type="button" onClick={exportWeeklyStatus1011} disabled={exportingStatus}>
-                  {exportingStatus ? 'Đang xuất...' : 'Xuất trạng thái Mẫu 10/11'}
-                </button>
-              ) : null}
+              <button className="btn outline" type="button" onClick={exportWeeklyStatus1011} disabled={exportingStatus}>
+                {exportingStatus ? 'Đang xuất...' : 'Xuất Excel Mẫu 10/11'}
+              </button>
             </div>
           </div>
 
