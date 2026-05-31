@@ -26,6 +26,14 @@ const Sidebar = ({ isOpen, onClose }) => {
         </NavLink>
         {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
           <NavLink
+            to="/discipline/manager-coaching"
+            className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
+          >
+            Phiếu coaching
+          </NavLink>
+        ) : null}
+        {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+          <NavLink
             to="/discipline/manager-review"
             className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
           >
@@ -40,10 +48,26 @@ const Sidebar = ({ isOpen, onClose }) => {
         </NavLink>
         {user?.role === 'ADMIN' ? (
           <NavLink
+            to="/system-administration/ward-catalogs"
+            className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
+          >
+            Danh mục phường/xã
+          </NavLink>
+        ) : null}
+        {user?.role === 'ADMIN' ? (
+          <NavLink
             to="/system-administration/journey-phase-configs"
             className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
           >
             Cấu hình giai đoạn
+          </NavLink>
+        ) : null}
+        {user?.role === 'ADMIN' ? (
+          <NavLink
+            to="/system-administration/coaching-phase-configs"
+            className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
+          >
+            Giai đoạn coaching
           </NavLink>
         ) : null}
         {user?.role === 'ADMIN' ? (

@@ -1,10 +1,17 @@
 import { useEffect, useState, useMemo } from 'react';
 import managerDailyScoreService from '../../../services/api/managerDailyScoreService';
+import managerCoachingService from '../../../services/api/managerCoachingService';
+import journalService from '../../../services/api/journalService';
 import userService from '../../../services/api/userService';
 
 const today = new Date().toISOString().slice(0, 10);
 
-const ProvincialStatisticsPage = () => {
+const toPercent = (numerator, denominator) => {
+  if (!denominator) return '0%';
+  return `${((Number(numerator || 0) / Number(denominator || 0)) * 100).toFixed(2)}%`;
+};
+
+const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [fromDate, setFromDate] = useState(today);
@@ -12,20 +19,28 @@ const ProvincialStatisticsPage = () => {
   const [unitId, setUnitId] = useState('');
   const [units, setUnits] = useState([]);
   const [stats, setStats] = useState(null);
-  const [activeTab, setActiveTab] = useState('personal');
+  const [coachingRows, setCoachingRows] = useState([]);
+  const [coachingEmployees, setCoachingEmployees] = useState([]);
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [statusText, setStatusText] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [exportingCoaching, setExportingCoaching] = useState(false);
+  const [exportingManagerCoaching, setExportingManagerCoaching] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setErrorText('');
     setStatusText('');
     try {
-      const [statsData, unitData] = await Promise.all([
+      const [statsData, coachingData, coachingEmployeesData, unitData] = await Promise.all([
         managerDailyScoreService.getStatistics({ fromDate, toDate, unitId: unitId || undefined }),
+        managerCoachingService.getList({ fromDate, toDate }),
+        managerCoachingService.getEmployees().catch(() => []),
         userService.getUnits().catch(() => []),
       ]);
       setStats(statsData || null);
+      setCoachingRows(Array.isArray(coachingData) ? coachingData : []);
+      setCoachingEmployees(Array.isArray(coachingEmployeesData) ? coachingEmployeesData : []);
       setUnits(Array.isArray(unitData) ? unitData : []);
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được dữ liệu thống kê');
@@ -49,6 +64,118 @@ const ProvincialStatisticsPage = () => {
     if (!stats?.unitRows) return [];
     return [...stats.unitRows].sort((a, b) => Number(b.averageScore || 0) - Number(a.averageScore || 0));
   }, [stats?.unitRows]);
+
+  const sortedCoachingRows = useMemo(() => {
+    const filteredRows = Array.isArray(coachingRows)
+      ? coachingRows.filter((row) => (!unitId ? true : row.coachedUnitId === unitId))
+      : [];
+
+    return [...filteredRows]
+      .sort((a, b) => {
+        const unitCmp = String(a.coachedUnitName || '').localeCompare(String(b.coachedUnitName || ''));
+        if (unitCmp !== 0) return unitCmp;
+        return String(b.coachingTime || '').localeCompare(String(a.coachingTime || ''));
+      });
+  }, [coachingRows, unitId]);
+
+  const coachingRowsWithSubtotals = useMemo(() => {
+    const rows = sortedCoachingRows;
+    if (!rows.length) return [];
+
+    const result = [];
+    let group = [];
+    let lastUnit = '';
+
+    const pushGroup = () => {
+      if (!group.length) return;
+      const keepTncTotal = group.reduce((sum, item) => sum + (Number(item.keepTnc) === 1 ? 1 : 0), 0);
+      const evaluationTotal = group.reduce((sum, item) => sum + (Number(item.evaluationResult) === 1 ? 1 : 0), 0);
+      result.push(...group.map((item) => ({ type: 'data', item })));
+      result.push({
+        type: 'subtotal',
+        unitName: group[0]?.coachedUnitName || '',
+        keepTncTotal,
+        evaluationTotal,
+      });
+      group = [];
+    };
+
+    rows.forEach((item) => {
+      const unitName = String(item.coachedUnitName || '');
+      if (lastUnit && unitName !== lastUnit) {
+        pushGroup();
+      }
+      lastUnit = unitName;
+      group.push(item);
+    });
+    pushGroup();
+
+    return result;
+  }, [sortedCoachingRows]);
+
+  const coachingSummaryRows = useMemo(() => {
+    const unitEmployeeCountMap = new Map();
+    (Array.isArray(coachingEmployees) ? coachingEmployees : []).forEach((employee) => {
+      const id = String(employee.unitId || '');
+      if (!id) return;
+      unitEmployeeCountMap.set(id, Number(unitEmployeeCountMap.get(id) || 0) + 1);
+    });
+
+    const groupMap = new Map();
+    sortedCoachingRows.forEach((row) => {
+      const date = String(row.coachingTime || '').slice(0, 10);
+      const unitKey = String(row.coachedUnitId || '');
+      const key = `${unitKey}__${date}`;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          key,
+          unitId: unitKey,
+          unitName: row.coachedUnitName || '',
+          date,
+          coachedSet: new Set(),
+          keepSet: new Set(),
+          passSet: new Set(),
+        });
+      }
+      const entry = groupMap.get(key);
+      const coachedUserId = String(row.coachedUserId || '');
+      if (!coachedUserId) return;
+      entry.coachedSet.add(coachedUserId);
+      if (Number(row.keepTnc) === 1) {
+        entry.keepSet.add(coachedUserId);
+      }
+      if (Number(row.evaluationResult) === 1) {
+        entry.passSet.add(coachedUserId);
+      }
+    });
+
+    return Array.from(groupMap.values())
+      .map((item) => {
+        const totalUnitEmployees = Number(unitEmployeeCountMap.get(item.unitId) || 0);
+        const coachedCount = item.coachedSet.size; // (4)
+        const keepCount = item.keepSet.size; // (7)
+        const passCount = item.passSet.size; // (8)
+
+        return {
+          key: item.key,
+          unitId: item.unitId,
+          unitName: item.unitName,
+          date: item.date,
+          totalUnitEmployees,
+          coachedCount,
+          keepCount,
+          passCount,
+          coachedRate: toPercent(coachedCount, totalUnitEmployees), // tong (4) / tong NV don vi
+          keepRate: toPercent(keepCount, coachedCount), // (7) / (4)
+          passRate: toPercent(passCount, coachedCount), // (8) / (4)
+        };
+      })
+      .sort((a, b) => {
+        const dateCmp = String(b.date || '').localeCompare(String(a.date || ''));
+        if (dateCmp !== 0) return dateCmp;
+        return String(a.unitName || '').localeCompare(String(b.unitName || ''));
+      });
+  }, [sortedCoachingRows, coachingEmployees]);
 
   const topUnits = sortedUnitRows.slice(0, 5);
 
@@ -114,6 +241,62 @@ const ProvincialStatisticsPage = () => {
     }
   };
 
+  const exportCoachingProvincial = async () => {
+    setErrorText('');
+    setStatusText('');
+    if (!fromDate) {
+      setErrorText('Vui lòng chọn ngày để xuất báo cáo coaching');
+      return;
+    }
+    setExportingCoaching(true);
+    try {
+      const result = await journalService.exportCoachingProvincial({
+        fromDate,
+        toDate: toDate || fromDate,
+        unitId: unitId || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất báo cáo coaching toàn tỉnh');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất báo cáo coaching thất bại');
+    } finally {
+      setExportingCoaching(false);
+    }
+  };
+
+  const exportManagerCoachingProvincial = async () => {
+    setErrorText('');
+    setStatusText('');
+    if (!fromDate) {
+      setErrorText('Vui lòng chọn ngày để xuất thống kê coaching quản lý');
+      return;
+    }
+    setExportingManagerCoaching(true);
+    try {
+      const result = await managerCoachingService.exportExcel({ fromDate, toDate: toDate || fromDate });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất thống kê coaching quản lý');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất thống kê coaching quản lý thất bại');
+    } finally {
+      setExportingManagerCoaching(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-head">
@@ -175,6 +358,12 @@ const ProvincialStatisticsPage = () => {
           <button className="btn" onClick={exportProvincialReport} disabled={exporting}>
             {exporting ? 'Đang xuất...' : 'Xuất báo cáo Excel'}
           </button>
+          <button className="btn" style={{ background: '#0f766e' }} onClick={exportCoachingProvincial} disabled={exportingCoaching}>
+            {exportingCoaching ? 'Đang xuất...' : 'Xuất báo cáo Coaching'}
+          </button>
+          <button className="btn" style={{ background: '#7c3aed' }} onClick={exportManagerCoachingProvincial} disabled={exportingManagerCoaching}>
+            {exportingManagerCoaching ? 'Đang xuất...' : 'Xuất thống kê Coaching quản lý'}
+          </button>
         </div>
       </section>
 
@@ -185,6 +374,9 @@ const ProvincialStatisticsPage = () => {
           </button>
           <button className={`btn ${activeTab === 'unit' ? '' : 'outline'}`} onClick={() => setActiveTab('unit')}>
             Thống kê đơn vị
+          </button>
+          <button className={`btn ${activeTab === 'managerCoaching' ? '' : 'outline'}`} onClick={() => setActiveTab('managerCoaching')}>
+            Thống kê Coaching quản lý
           </button>
         </div>
 
@@ -218,7 +410,7 @@ const ProvincialStatisticsPage = () => {
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : activeTab === 'unit' ? (
           <div className="table-wrap">
             <table className="table">
               <thead>
@@ -243,6 +435,91 @@ const ProvincialStatisticsPage = () => {
                 ) : null}
               </tbody>
             </table>
+          </div>
+        ) : (
+          <div>
+            <div className="table-wrap" style={{ marginBottom: 14 }}>
+              <table className="table" style={{ minWidth: 1250 }}>
+                <thead>
+                  <tr>
+                    <th>Đơn vị</th>
+                    <th>Ngày</th>
+                    <th>Tổng NV đơn vị</th>
+                    <th>NV được coaching (4)</th>
+                    <th>NV được coaching giữ chuẩn (7)</th>
+                    <th>NV được coaching đạt (8)</th>
+                    <th>TL % NV được coach/ngày</th>
+                    <th>TL % NV giữ chuẩn/ngày</th>
+                    <th>TL % NV được coaching đạt/ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coachingSummaryRows.map((row) => (
+                    <tr key={row.key}>
+                      <td>{row.unitName}</td>
+                      <td>{row.date}</td>
+                      <td>{row.totalUnitEmployees}</td>
+                      <td>{row.coachedCount}</td>
+                      <td>{row.keepCount}</td>
+                      <td>{row.passCount}</td>
+                      <td>{row.coachedRate}</td>
+                      <td>{row.keepRate}</td>
+                      <td>{row.passRate}</td>
+                    </tr>
+                  ))}
+                  {!loading && coachingSummaryRows.length === 0 ? (
+                    <tr><td colSpan={9}>Không có dữ liệu báo cáo tổng hợp coaching quản lý</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="table-wrap">
+              <table className="table" style={{ minWidth: 1280 }}>
+                <thead>
+                  <tr>
+                    <th>Đơn vị</th>
+                    <th>Thời gian coaching</th>
+                    <th>Người coach</th>
+                    <th>Người được coaching</th>
+                    <th>Nội dung coach</th>
+                    <th>Sửa nội dung gì</th>
+                    <th>Giữ chuẩn TNC</th>
+                    <th>Đánh giá người được coaching</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coachingRowsWithSubtotals.map((row, idx) =>
+                    row.type === 'data' ? (
+                      <tr key={`coaching-${row.item.id || idx}`}>
+                        <td>{row.item.coachedUnitName || ''}</td>
+                        <td>{String(row.item.coachingTime || '').replace('T', ' ').slice(0, 16)}</td>
+                        <td>{row.item.coachName || ''}</td>
+                        <td>{row.item.coachedUserName || ''}</td>
+                        <td>{row.item.coachingContent || ''}</td>
+                        <td>{row.item.contentToImprove || ''}</td>
+                        <td>{Number(row.item.keepTnc) === 1 ? 1 : 0}</td>
+                        <td>{Number(row.item.evaluationResult) === 1 ? 1 : 0}</td>
+                      </tr>
+                    ) : (
+                      <tr key={`coaching-subtotal-${row.unitName}-${idx}`} style={{ background: '#f8fafc', fontWeight: 700 }}>
+                        <td>{row.unitName}</td>
+                        <td></td>
+                        <td></td>
+                        <td>tổng của đơn vị</td>
+                        <td></td>
+                        <td></td>
+                        <td>tổng của đơn vị: {row.keepTncTotal}</td>
+                        <td>tổng của đơn vị: {row.evaluationTotal}</td>
+                      </tr>
+                    ),
+                  )}
+                  {!loading && coachingRowsWithSubtotals.length === 0 ? (
+                    <tr><td colSpan={8}>Không có dữ liệu thống kê coaching quản lý</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>

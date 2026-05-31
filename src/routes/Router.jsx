@@ -11,16 +11,21 @@ import Journey90Page from '../features/journals/pages/Journey90Page';
 import WeeklyJournalPage from '../features/journals/pages/WeeklyJournalPage';
 import ManagerReviewPage from '../features/journals/pages/ManagerReviewPage';
 import ManagerWeeklyReviewPage from '../features/journals/pages/ManagerWeeklyReviewPage';
+import ManagerCoachingPage from '../features/journals/pages/ManagerCoachingPage';
 import ManagerDailyScorePage from '../features/manager-daily-scores/pages/ManagerDailyScorePage';
 import WeeklyReportPage from '../features/reports/pages/WeeklyReportPage';
 import ProvincialApprovedJournalsPage from '../features/reports/pages/ProvincialApprovedJournalsPage';
 import ProvincialStatisticsPage from '../features/reports/pages/ProvincialStatisticsPage';
 import JournalSubmissionsPage from '../features/reports/pages/JournalSubmissionsPage';
+import CoachingProvincialReportHubPage from '../features/reports/pages/CoachingProvincialReportHubPage';
+import CoachingProvincialReportGd2Page from '../features/reports/pages/CoachingProvincialReportGd2Page';
 import UserManagementPage from '../features/system-administration/pages/UserManagement/UserManagementPage';
 import RolePermissionPage from '../features/system-administration/pages/RolePermissionManagement/RolePermissionPage';
 import JourneyPhaseConfigPage from '../features/system-administration/pages/JourneyPhaseConfigPage';
+import CoachingPhaseConfigPage from '../features/system-administration/pages/CoachingPhaseConfigPage';
 import LoginHistoryPage from '../features/system-administration/pages/LoginHistoryPage';
 import SystemConfigPage from '../features/system-administration/pages/SystemConfigPage';
+import WardCatalogAdminPage from '../features/system-administration/pages/WardCatalogAdminPage';
 import { selectAuth } from '../store/auth/AuthSlice';
 
 const Router = () => {
@@ -43,6 +48,14 @@ const Router = () => {
         <Route index element={<DashboardPage />} />
         <Route path="discipline/journey-90" element={<Journey90Page />} />
         <Route path="discipline/weekly-journal" element={<WeeklyJournalPage />} />
+        <Route
+          path="discipline/manager-coaching"
+          element={
+            <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>
+              <ManagerCoachingPage />
+            </RoleGuard>
+          }
+        />
         <Route
           path="discipline/manager-review"
           element={
@@ -100,10 +113,42 @@ const Router = () => {
           }
         />
         <Route
+          path="discipline/provincial-statistics-manager-coaching"
+          element={
+            <RoleGuard user={user} roles={['PROVINCIAL_VIEWER', 'ADMIN']}>
+              <ProvincialStatisticsPage defaultTab="managerCoaching" />
+            </RoleGuard>
+          }
+        />
+        <Route
           path="discipline/journal-submissions"
           element={
             <RoleGuard user={user} roles={['PROVINCIAL_VIEWER', 'ADMIN']}>
               <JournalSubmissionsPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="discipline/coaching-provincial-report/*"
+          element={
+            <RoleGuard user={user} roles={['PROVINCIAL_VIEWER', 'ADMIN']}>
+              <CoachingProvincialReportHubPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="discipline/coaching-provincial-summary"
+          element={
+            <RoleGuard user={user} roles={['PROVINCIAL_VIEWER', 'ADMIN']}>
+              <Navigate to="/discipline/coaching-provincial-report/summary" replace />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="discipline/coaching-provincial-report-gd2"
+          element={
+            <RoleGuard user={user} roles={['PROVINCIAL_VIEWER', 'ADMIN']}>
+              <CoachingProvincialReportGd2Page />
             </RoleGuard>
           }
         />
@@ -140,6 +185,14 @@ const Router = () => {
           }
         />
         <Route
+          path="system-administration/coaching-phase-configs"
+          element={
+            <RoleGuard user={user} roles={['ADMIN']}>
+              <CoachingPhaseConfigPage />
+            </RoleGuard>
+          }
+        />
+        <Route
           path="system-administration/login-history"
           element={
             <RoleGuard user={user} roles={['ADMIN']}>
@@ -152,6 +205,14 @@ const Router = () => {
           element={
             <RoleGuard user={user} roles={['ADMIN']}>
               <SystemConfigPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="system-administration/ward-catalogs"
+          element={
+            <RoleGuard user={user} roles={['ADMIN']}>
+              <WardCatalogAdminPage />
             </RoleGuard>
           }
         />

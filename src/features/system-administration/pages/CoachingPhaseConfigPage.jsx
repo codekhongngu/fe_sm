@@ -1,24 +1,16 @@
 import { useEffect, useState } from 'react';
 import behaviorAdminService from '../../../services/api/behaviorAdminService';
 
-const ALL_AVAILABLE_FORMS = [
-  { id: 'awareness', label: 'Mẫu 1: Nhận diện' },
-  { id: 'behavior', label: 'Mẫu 2: Hành vi' },
-  { id: 'form3', label: 'Mẫu 3: Thay đổi Tư duy' },
-  { id: 'form4', label: 'Mẫu 4: Báo cáo Bán hàng' },
-  { id: 'form5', label: 'Mẫu 5: Ghi chép cuối ngày' },
-  { id: 'form7', label: 'Mẫu 7: Giữ chuẩn thu nhập' },
-  { id: 'form8', label: 'Mẫu 8: Củng cố niềm tin' },
-  { id: 'form9', label: 'Mẫu 9: Phá giới hạn thu nhập' },
-  { id: 'form12', label: 'Mẫu 12: Tuyên ngôn nghề nghiệp' }
+const ALL_COACHING_FORMS = [
+  { id: 'coaching_form_1', label: 'Mẫu coaching 1' },
+  { id: 'coaching_form_2', label: 'Mẫu coaching 2' },
 ];
 
-const JourneyPhaseConfigPage = () => {
+const CoachingPhaseConfigPage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState({ message: '', type: 'ok' });
-  
-  // Form states
+
   const [editingId, setEditingId] = useState(null);
   const [phaseCode, setPhaseCode] = useState('');
   const [phaseName, setPhaseName] = useState('');
@@ -26,15 +18,18 @@ const JourneyPhaseConfigPage = () => {
   const [endDay, setEndDay] = useState('');
   const [sortOrder, setSortOrder] = useState(1);
   const [isActive, setIsActive] = useState(true);
-  const [allowedForms, setAllowedForms] = useState([]);
+  const [allowedCoachingForms, setAllowedCoachingForms] = useState(['coaching_form_1']);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await behaviorAdminService.getJourneyPhaseConfigs();
+      const data = await behaviorAdminService.getCoachingPhaseConfigs();
       setItems(Array.isArray(data) ? data : []);
     } catch (error) {
-      setStatus({ message: error?.response?.data?.message || 'Không tải được cấu hình giai đoạn', type: 'error' });
+      setStatus({
+        message: error?.response?.data?.message || 'Không tải được cấu hình giai đoạn coaching',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -52,7 +47,7 @@ const JourneyPhaseConfigPage = () => {
     setEndDay('');
     setSortOrder(1);
     setIsActive(true);
-    setAllowedForms([]);
+    setAllowedCoachingForms(['coaching_form_1']);
   };
 
   const handleEdit = (item) => {
@@ -63,7 +58,11 @@ const JourneyPhaseConfigPage = () => {
     setEndDay(item.endDate || '');
     setSortOrder(item.sortOrder);
     setIsActive(item.isActive);
-    setAllowedForms(Array.isArray(item.allowedForms) ? item.allowedForms : []);
+    setAllowedCoachingForms(
+      Array.isArray(item.allowedCoachingForms) && item.allowedCoachingForms.length > 0
+        ? item.allowedCoachingForms
+        : ['coaching_form_1'],
+    );
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -77,31 +76,34 @@ const JourneyPhaseConfigPage = () => {
         endDate: endDay || null,
         sortOrder: Number(sortOrder),
         isActive,
-        allowedForms,
+        allowedCoachingForms,
       };
 
       if (editingId) {
-        await behaviorAdminService.updateJourneyPhaseConfig(editingId, payload);
-        setStatus({ message: 'Cập nhật cấu hình thành công', type: 'ok' });
+        await behaviorAdminService.updateCoachingPhaseConfig(editingId, payload);
+        setStatus({ message: 'Cập nhật cấu hình coaching thành công', type: 'ok' });
       } else {
-        await behaviorAdminService.createJourneyPhaseConfig(payload);
-        setStatus({ message: 'Thêm cấu hình thành công', type: 'ok' });
+        await behaviorAdminService.createCoachingPhaseConfig(payload);
+        setStatus({ message: 'Thêm cấu hình coaching thành công', type: 'ok' });
       }
-      
+
       resetForm();
       loadData();
     } catch (error) {
-      setStatus({ message: error?.response?.data?.message || 'Lưu cấu hình thất bại', type: 'error' });
+      setStatus({
+        message: error?.response?.data?.message || 'Lưu cấu hình coaching thất bại',
+        type: 'error',
+      });
     }
   };
 
   return (
     <div>
-      <h2>Cấu hình giai đoạn lộ trình 90 ngày</h2>
-      <p>Quản lý cấu hình các giai đoạn trong hệ thống.</p>
-      
+      <h2>Cấu hình giai đoạn coaching</h2>
+      <p>Quản lý cấu hình giai đoạn riêng cho form coaching nhân viên.</p>
+
       <div className="card" style={{ marginBottom: 24, maxWidth: 620 }}>
-        <h3>{editingId ? 'Sửa cấu hình' : 'Thêm cấu hình mới'}</h3>
+        <h3>{editingId ? 'Sửa cấu hình coaching' : 'Thêm cấu hình coaching mới'}</h3>
         <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
           <div>
             <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Mã giai đoạn</label>
@@ -116,7 +118,7 @@ const JourneyPhaseConfigPage = () => {
             <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Tên giai đoạn</label>
             <input
               className="field"
-              placeholder="VD: Giai đoạn 1"
+              placeholder="VD: Giai đoạn coaching 1"
               value={phaseName}
               onChange={(e) => setPhaseName(e.target.value)}
             />
@@ -164,18 +166,20 @@ const JourneyPhaseConfigPage = () => {
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>Các mẫu biểu áp dụng</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              {ALL_AVAILABLE_FORMS.map((formOption) => (
+            <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+              Mẫu coaching áp dụng
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {ALL_COACHING_FORMS.map((formOption) => (
                 <label key={formOption.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                   <input
                     type="checkbox"
-                    checked={allowedForms.includes(formOption.id)}
+                    checked={allowedCoachingForms.includes(formOption.id)}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setAllowedForms([...allowedForms, formOption.id]);
+                        setAllowedCoachingForms(Array.from(new Set([...allowedCoachingForms, formOption.id])));
                       } else {
-                        setAllowedForms(allowedForms.filter(id => id !== formOption.id));
+                        setAllowedCoachingForms(allowedCoachingForms.filter((id) => id !== formOption.id));
                       }
                     }}
                   />
@@ -196,22 +200,22 @@ const JourneyPhaseConfigPage = () => {
           </div>
         </div>
       </div>
-      
+
       {status.message && (
-        <div 
-          className={status.type === 'ok' ? 'status-ok' : 'status-err'} 
-          style={{ 
-            marginBottom: 16, 
-            padding: 12, 
-            backgroundColor: status.type === 'ok' ? '#e6f7e6' : '#fff1f0', 
-            borderLeft: `4px solid ${status.type === 'ok' ? '#52c41a' : '#f5222d'}` 
+        <div
+          className={status.type === 'ok' ? 'status-ok' : 'status-err'}
+          style={{
+            marginBottom: 16,
+            padding: 12,
+            backgroundColor: status.type === 'ok' ? '#e6f7e6' : '#fff1f0',
+            borderLeft: `4px solid ${status.type === 'ok' ? '#52c41a' : '#f5222d'}`,
           }}
         >
           {status.message}
         </div>
       )}
-      
-      <h3>Danh sách cấu hình giai đoạn</h3>
+
+      <h3>Danh sách cấu hình giai đoạn coaching</h3>
       {loading ? (
         <div>Đang tải dữ liệu...</div>
       ) : items.length === 0 ? (
@@ -219,7 +223,11 @@ const JourneyPhaseConfigPage = () => {
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
           {items.map((item) => (
-            <div key={item.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              key={item.id}
+              className="card"
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            >
               <div>
                 <h4 style={{ margin: '0 0 8px 0', color: '#1890ff' }}>
                   {item.phaseName} ({item.phaseCode})
@@ -232,8 +240,8 @@ const JourneyPhaseConfigPage = () => {
                   </span>
                 </div>
                 <div style={{ marginTop: 4, fontSize: '0.85em', color: '#888' }}>
-                  Các mẫu áp dụng: {Array.isArray(item.allowedForms) && item.allowedForms.length > 0 
-                    ? item.allowedForms.map(f => ALL_AVAILABLE_FORMS.find(a => a.id === f)?.label || f).join(', ')
+                  Mẫu coaching áp dụng: {Array.isArray(item.allowedCoachingForms) && item.allowedCoachingForms.length > 0
+                    ? item.allowedCoachingForms.map((f) => ALL_COACHING_FORMS.find((a) => a.id === f)?.label || f).join(', ')
                     : 'Mặc định hệ thống'}
                 </div>
               </div>
@@ -250,4 +258,4 @@ const JourneyPhaseConfigPage = () => {
   );
 };
 
-export default JourneyPhaseConfigPage;
+export default CoachingPhaseConfigPage;

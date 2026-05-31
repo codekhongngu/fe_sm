@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import journalService from '../../../services/api/journalService';
+import catalogService from '../../../services/api/catalogService';
 import JourneyTimelineStepper from '../components/v2/JourneyTimelineStepper';
 import Form2BehaviorChecklist from '../components/v2/Form2BehaviorChecklist';
 import Form38MindsetBelief from '../components/v2/Form38MindsetBelief';
@@ -94,9 +95,67 @@ const resolveAllowedFormsByDate = (dateKey, phaseConfigs) => {
   return PHASE_FORM_MAP[phaseCode] || PHASE_FORM_MAP.PHASE_1;
 };
 
+const COACHING_PHASE_FORM_MAP = {
+  PHASE_1: ['coaching_form_1'],
+  PHASE_2: ['coaching_form_2'],
+  PHASE_3: ['coaching_form_2'],
+};
+
+const COACHING_FORM_LABELS = {
+  coaching_form_1: 'Mẫu coaching 1',
+  coaching_form_2: 'Mẫu coaching 2',
+};
+
+const resolveAllowedCoachingFormsByDate = (dateKey, coachingPhaseConfigs) => {
+  const activePhaseConfigs = (Array.isArray(coachingPhaseConfigs) ? coachingPhaseConfigs : [])
+    .filter((item) => item?.isActive !== false)
+    .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+
+  const matched =
+    activePhaseConfigs.find(
+      (item) =>
+        item.startDate &&
+        item.endDate &&
+        dateKey >= item.startDate &&
+        dateKey <= item.endDate,
+    ) || null;
+
+  if (
+    matched &&
+    Array.isArray(matched.allowedCoachingForms) &&
+    matched.allowedCoachingForms.length > 0
+  ) {
+    return matched.allowedCoachingForms;
+  }
+
+  const phaseCode = String(matched?.phaseCode || '').toUpperCase();
+  return COACHING_PHASE_FORM_MAP[phaseCode] || COACHING_PHASE_FORM_MAP.PHASE_1;
+};
+
+const createInitialCoachingDraft = () => ({
+  salesPlan: '0',
+  customerName: '',
+  ward: '',
+  customerAddress: '',
+  oldReferral: '0',
+  customerFollowUp: '0',
+  noEarlyQuote: '0',
+  consultStandard: '0',
+  consultEnoughLayers: '0',
+  consultSolutionMatchingNeed: '0',
+  consultClearBenefit: '0',
+  consultMentionLossAvoidance: '0',
+  closedService: '0',
+  personalRevenue: '',
+  nextFollowRequired: '0',
+  nextFollowStep: '',
+  nextFollowSchedule: '',
+});
+
 const Journey90Page = () => {
   const { user } = useSelector(selectAuth);
   const isManager = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+  const isEmployee = user?.role === 'EMPLOYEE';
 
   const todayDefault = toDateKey(getEffectiveToday(isManager));
   const fromDefault = (() => {
@@ -113,10 +172,16 @@ const Journey90Page = () => {
   const [timeFilter, setTimeFilter] = useState('last_90');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
+  const [showCoachingForm, setShowCoachingForm] = useState(false);
+  const [coachingSaving, setCoachingSaving] = useState(false);
+  const [coachingImporting, setCoachingImporting] = useState(false);
+  const [coachingCustomers, setCoachingCustomers] = useState([]);
+  const [wardOptions, setWardOptions] = useState([]);
   const [activeEform, setActiveEform] = useState('awareness');
   const [fromDate, setFromDate] = useState(fromDefault);
   const [toDate, setToDate] = useState(todayDefault);
   const [phaseConfigs, setPhaseConfigs] = useState([]);
+  const [coachingPhaseConfigs, setCoachingPhaseConfigs] = useState([]);
   const [form, setForm] = useState({
     avoidance: '',
     selfLimit: '',
@@ -146,6 +211,140 @@ const Journey90Page = () => {
     form12CommitmentSignature: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [coachingDraft, setCoachingDraft] = useState(createInitialCoachingDraft());
+  const todayKey = toDateKey(getEffectiveToday(isManager));
+  const coachingDateKey = selectedDateKey || todayKey;
+  const availableCoachingForms = useMemo(() => {
+    return resolveAllowedCoachingFormsByDate(coachingDateKey, coachingPhaseConfigs);
+  }, [coachingDateKey, coachingPhaseConfigs]);
+  const activeCoachingForm = availableCoachingForms[0] || 'coaching_form_1';
+  const activeCoachingFormLabel = COACHING_FORM_LABELS[activeCoachingForm] || 'Mẫu coaching 1';
+  const isCoachingForm1 = activeCoachingForm === 'coaching_form_1';
+
+  const handleCoachingDraftChange = (field, value) => {
+    setCoachingDraft((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const resetCoachingDraft = () => {
+    setCoachingDraft(createInitialCoachingDraft());
+  };
+
+  const loadCoachingCustomers = async (logDate, coachingForm) => {
+    try {
+      const data = await journalService.getDailyCoachingCustomers(logDate, coachingForm);
+      setCoachingCustomers(Array.isArray(data) ? data : []);
+    } catch {
+      setCoachingCustomers([]);
+    }
+  };
+
+  const loadWardOptions = async () => {
+    try {
+      const rows = await catalogService.listWards();
+      const activeRows = (Array.isArray(rows) ? rows : []).filter((item) => item?.isActive !== false);
+      setWardOptions(activeRows);
+    } catch {
+      setWardOptions([]);
+    }
+  };
+
+  const handleSaveCoachingDraft = async () => {
+    if (!String(coachingDraft.customerName || '').trim()) {
+      setErrorText('Vui lòng nhập tên khách hàng trước khi lưu coaching.');
+      return;
+    }
+
+    setCoachingSaving(true);
+    setErrorText('');
+    try {
+      const payload = {
+        coachingForm: activeCoachingForm,
+        logDate: coachingDateKey,
+        salesPlan: Number(coachingDraft.salesPlan || 0),
+        customerName: String(coachingDraft.customerName || '').trim(),
+        ward: String(coachingDraft.ward || '').trim(),
+        customerAddress: String(coachingDraft.customerAddress || '').trim(),
+        oldReferral: Number(coachingDraft.oldReferral || 0),
+        customerFollowUp: Number(coachingDraft.customerFollowUp || 0),
+        noEarlyQuote: Number(coachingDraft.noEarlyQuote || 0),
+        consultStandard:
+          isCoachingForm1
+            ? Number(coachingDraft.consultStandard || 0)
+            : Number(coachingDraft.consultEnoughLayers || 0) &&
+              Number(coachingDraft.consultSolutionMatchingNeed || 0) &&
+              Number(coachingDraft.consultClearBenefit || 0) &&
+              Number(coachingDraft.consultMentionLossAvoidance || 0)
+              ? 1
+              : 0,
+        consultEnoughLayers: isCoachingForm1 ? 0 : Number(coachingDraft.consultEnoughLayers || 0),
+        consultSolutionMatchingNeed: isCoachingForm1 ? 0 : Number(coachingDraft.consultSolutionMatchingNeed || 0),
+        consultClearBenefit: isCoachingForm1 ? 0 : Number(coachingDraft.consultClearBenefit || 0),
+        consultMentionLossAvoidance: isCoachingForm1 ? 0 : Number(coachingDraft.consultMentionLossAvoidance || 0),
+        closedService: Number(coachingDraft.closedService || 0),
+        personalRevenue: String(coachingDraft.personalRevenue || '0').trim() || '0',
+        nextFollowRequired: Number(coachingDraft.nextFollowRequired || 0),
+        nextFollowStep: String(coachingDraft.nextFollowStep || '').trim(),
+        nextFollowSchedule: coachingDraft.nextFollowSchedule || undefined,
+      };
+
+      await journalService.saveDailyCoachingCustomer(payload);
+      await loadCoachingCustomers(coachingDateKey, activeCoachingForm);
+      setInfoText(`Đã lưu form coaching cho ngày ${coachingDateKey}.`);
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Lưu form coaching thất bại.');
+    } finally {
+      setCoachingSaving(false);
+    }
+  };
+
+  const handleImportCoachingExcel = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (selectedStatus === 'future') {
+      setErrorText('Chưa đến ngày này, chưa thể import coaching.');
+      return;
+    }
+
+    setCoachingImporting(true);
+    setErrorText('');
+    try {
+      const result = await journalService.importDailyCoachingCustomers(
+        file,
+        coachingDateKey,
+        activeCoachingForm,
+      );
+      await loadCoachingCustomers(coachingDateKey, activeCoachingForm);
+      setInfoText(
+        `Import coaching thành công (${result.imported}/${result.total}) cho ngày ${coachingDateKey}.`,
+      );
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Import coaching thất bại.');
+    } finally {
+      setCoachingImporting(false);
+    }
+  };
+
+  const handleDownloadCoachingTemplate = async () => {
+    setErrorText('');
+    try {
+      const blob = await journalService.downloadDailyCoachingCustomersTemplate(activeCoachingForm);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'mau-import-coaching-khach-hang.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Không tải được file mẫu import coaching.');
+    }
+  };
 
   const isFormShared = (formType) => {
     if (!todayJournal) return false;
@@ -212,13 +411,19 @@ const Journey90Page = () => {
             ? statusFilter
             : undefined,
       };
-      const [journals, timelineStatuses] = await Promise.all([
-        journalService.getList(params),
-        journalService.getJourneyTimelineFormStatuses({
-          fromDate: fromDate || undefined,
-          toDate: toDate || undefined,
-        }),
-      ]);
+      const journals = await journalService.getList(params);
+      let timelineStatuses = {};
+      if (isEmployee) {
+        try {
+          timelineStatuses =
+            (await journalService.getJourneyTimelineFormStatuses({
+              fromDate: fromDate || undefined,
+              toDate: toDate || undefined,
+            })) || {};
+        } catch {
+          timelineStatuses = {};
+        }
+      }
       const map = {};
       journals.forEach((journal) => {
         const key = journal.reportDate || toDateKey(new Date(journal.createdAt));
@@ -250,6 +455,13 @@ const Journey90Page = () => {
       .catch(() => setPhaseConfigs([]));
   }, []);
 
+  useEffect(() => {
+    journalService
+      .getCoachingPhaseConfigs()
+      .then((rows) => setCoachingPhaseConfigs(Array.isArray(rows) ? rows : []))
+      .catch(() => setCoachingPhaseConfigs([]));
+  }, []);
+
   const [extraLogs, setExtraLogs] = useState({});
 
   useEffect(() => {
@@ -259,6 +471,22 @@ const Journey90Page = () => {
       }).catch(e => console.error(e));
     }
   }, [selectedDateKey]);
+
+  useEffect(() => {
+    if (!isEmployee) {
+      setCoachingCustomers([]);
+      return;
+    }
+    loadCoachingCustomers(coachingDateKey, activeCoachingForm);
+  }, [coachingDateKey, activeCoachingForm, isEmployee]);
+
+  useEffect(() => {
+    if (!isEmployee) {
+      setWardOptions([]);
+      return;
+    }
+    loadWardOptions();
+  }, [isEmployee]);
 
   useEffect(() => {
     const run = async () => {
@@ -356,8 +584,6 @@ const Journey90Page = () => {
       return matchTime && matchRange && matchStatus;
     });
   }, [timelineEntries, timeFilter, statusFilter, fromDate, toDate]);
-
-  const todayKey = toDateKey(getEffectiveToday(isManager));
 
   useEffect(() => {
     if (filteredEntries.length === 0) {
@@ -1432,6 +1658,22 @@ const Journey90Page = () => {
               >
                 Mở nhật ký hôm nay
               </button>
+              {isEmployee ? (
+                <button
+                  type="button"
+                  className="btn outline"
+                  onClick={() => {
+                    if (selectedStatus === 'future') {
+                      setErrorText('Chưa đến ngày này, chưa thể điền form coaching.');
+                      return;
+                    }
+                    setErrorText('');
+                    setShowCoachingForm(true);
+                  }}
+                >
+                  Điền form coaching
+                </button>
+              ) : null}
               {availableForms.includes('awareness') && (
                 <span className={`journey-mini-badge ${todayJournal?.awarenessSubmittedAt ? 'ok' : ''}`}>
                   Mẫu 1 nhận diện: {todayJournal?.awarenessSubmittedAt ? 'Đã nộp' : 'Chưa nộp'}
@@ -1500,6 +1742,237 @@ const Journey90Page = () => {
               }}
             />
           </div>
+
+          {isEmployee ? (
+            <div className="coaching-section" style={{ marginBottom: 14 }}>
+            <div className="coaching-section-title">DANH SÁCH KHÁCH HÀNG ĐÃ NHẬP ({coachingDateKey})</div>
+            {coachingCustomers.length === 0 ? (
+              <div className="coaching-empty">Chưa có khách hàng nào được nhập.</div>
+            ) : (
+              <div className="coaching-list-wrap">
+                <table className="coaching-list-table">
+                  <thead>
+                    <tr>
+                      <th>Kế hoạch bán hàng</th>
+                      <th>Tên khách hàng tiếp xúc/tư vấn</th>
+                      <th>Địa chỉ khách hàng tiếp xúc/tư vấn</th>
+                      <th>Khách cũ giới thiệu</th>
+                      <th>Khách follow up</th>
+                      <th>Không báo giá sớm</th>
+                      {isCoachingForm1 ? <th>Cuộc tư vấn đủ chuẩn</th> : <th>Số cuộc tư vấn có đủ 3 lớp</th>}
+                      {!isCoachingForm1 ? <th>Số cuộc tư vấn có gắn giải pháp với nhu cầu</th> : null}
+                      {!isCoachingForm1 ? <th>Số cuộc tư vấn có nói rõ lợi ích</th> : null}
+                      {!isCoachingForm1 ? <th>Số cuộc tư vấn có nhắc thiệt hại tránh được</th> : null}
+                      <th>Chốt dịch vụ</th>
+                      <th>Doanh thu cá nhân (Ngàn đồng)</th>
+                      <th>Khách follow up tiếp theo/ Bước tiếp theo</th>
+                      <th>Lịch hẹn follow tiếp theo</th>
+                    </tr>
+                    <tr className="coaching-guide-row">
+                      <th>Có danh sách KH, phân loại KH, chuẩn bị câu hỏi... (Có=1, không=0)</th>
+                      <th>&nbsp;</th>
+                      <th>Tên đường, phường (xã), số nhà/tel...</th>
+                      <th>(Được KH cũ giới thiệu=1, không được giới thiệu=0)</th>
+                      <th>Tư vấn lại KH tiềm năng đã được tư vấn chưa thành công (Đúng=1, sai=0)</th>
+                      <th>(Đúng=1, sai=0)</th>
+                      <th>{isCoachingForm1 ? 'Ko giới thiệu gói, báo giá sớm, hỏi khách có mua không... (Đúng=1, sai=0)' : '(Đúng=1, sai=0)'}</th>
+                      {!isCoachingForm1 ? <th>(Đúng=1, sai=0)</th> : null}
+                      {!isCoachingForm1 ? <th>(Đúng=1, sai=0)</th> : null}
+                      {!isCoachingForm1 ? <th>(Đúng=1, sai=0)</th> : null}
+                      {!isCoachingForm1 ? <th>(Đúng=1, sai=0)</th> : null}
+                      <th>(Lắp đặt/hòa mạng=1, chưa lắp đặt HM=0)</th>
+                      <th>&nbsp;</th>
+                      <th>(Có follow=1, không cần follow=0) / Bước tiếp theo</th>
+                      <th>Lần follow (1): dd/mm/yyyy</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {coachingCustomers.map((row) => (
+                      <tr key={row.id}>
+                        <td>{row.salesPlan ?? 0}</td>
+                        <td style={{ fontWeight: 700 }}>{row.customerName || '-'}</td>
+                        <td>{[row.customerAddress, row.ward].filter(Boolean).join(', ') || '-'}</td>
+                        <td>{row.oldReferral ?? 0}</td>
+                        <td>{row.customerFollowUp ?? 0}</td>
+                        <td>{row.noEarlyQuote ?? 0}</td>
+                        <td>{isCoachingForm1 ? (row.consultStandard ?? 0) : (row.consultEnoughLayers ?? 0)}</td>
+                        {!isCoachingForm1 ? <td>{row.consultSolutionMatchingNeed ?? 0}</td> : null}
+                        {!isCoachingForm1 ? <td>{row.consultClearBenefit ?? 0}</td> : null}
+                        {!isCoachingForm1 ? <td>{row.consultMentionLossAvoidance ?? 0}</td> : null}
+                        <td>{row.closedService ?? 0}</td>
+                        <td>{row.personalRevenue || '0'}</td>
+                        <td>
+                          <div>{row.nextFollowRequired ?? 0}</div>
+                          <div>{row.nextFollowStep || '-'}</div>
+                        </td>
+                        <td>{row.nextFollowSchedule || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            </div>
+          ) : null}
+
+          {showCoachingForm ? (
+            <div className="journey-modal-backdrop" onClick={() => setShowCoachingForm(false)}>
+              <div className="journey-modal coaching-sheet" onClick={(e) => e.stopPropagation()}>
+                <div className="coaching-sheet-head">
+                  <div className="coaching-sheet-head-main">
+                    <h3 className="coaching-sheet-title">Thêm Mới Khách Hàng</h3>
+                    <div className="coaching-sheet-subtitle">{activeCoachingFormLabel} - Ngày nhập: {coachingDateKey}</div>
+                  </div>
+                  <div className="coaching-sheet-head-actions">
+                    <label className="btn outline" style={{ marginBottom: 0, cursor: coachingImporting ? 'not-allowed' : 'pointer' }}>
+                      {coachingImporting ? 'Đang import...' : 'Import Excel'}
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        disabled={coachingImporting}
+                        onChange={handleImportCoachingExcel}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="btn outline"
+                      onClick={handleDownloadCoachingTemplate}
+                    >
+                      Tải file mẫu
+                    </button>
+                    <button className="btn outline" onClick={() => setShowCoachingForm(false)}>Đóng</button>
+                  </div>
+                </div>
+
+                <div className="coaching-section">
+                  <div className="coaching-section-title">THÔNG TIN CƠ BẢN</div>
+                  <div className="coaching-basic-grid">
+                    <div>
+                      <label className="coaching-label">Tên khách hàng</label>
+                      <input className="field" placeholder="Nhập họ và tên..." value={coachingDraft.customerName} onChange={(e) => handleCoachingDraftChange('customerName', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="coaching-label">Phường/Xã</label>
+                      <select
+                        className="field"
+                        value={coachingDraft.ward}
+                        onChange={(e) => handleCoachingDraftChange('ward', e.target.value)}
+                      >
+                        <option value="">Chọn Phường/Xã...</option>
+                        {wardOptions.map((item) => (
+                          <option key={item.id} value={item.name || ''}>
+                            {item.name || ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="coaching-label">Số nhà, tên đường</label>
+                      <input className="field" placeholder="Ví dụ: 123 Đường ABC..." value={coachingDraft.customerAddress} onChange={(e) => handleCoachingDraftChange('customerAddress', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="coaching-split-grid">
+                  <div className="coaching-section">
+                    <div className="coaching-section-title">KẾ HOẠCH</div>
+                    <label className="coaching-label">Kế hoạch bán hàng</label>
+                    <select className="field" value={coachingDraft.salesPlan} onChange={(e) => handleCoachingDraftChange('salesPlan', e.target.value)}>
+                      <option value="0">Không có kế hoạch (0)</option>
+                      <option value="1">Có kế hoạch (1)</option>
+                    </select>
+
+                    <div className="coaching-label" style={{ marginTop: 10 }}>Khách cũ giới thiệu</div>
+                    <div className="coaching-choice-row">
+                      <label><input type="radio" name="oldReferral" checked={coachingDraft.oldReferral === '1'} onChange={() => handleCoachingDraftChange('oldReferral', '1')} /> Có (1)</label>
+                      <label><input type="radio" name="oldReferral" checked={coachingDraft.oldReferral === '0'} onChange={() => handleCoachingDraftChange('oldReferral', '0')} /> Không (0)</label>
+                    </div>
+
+                    <div className="coaching-label" style={{ marginTop: 10 }}>Khách follow up</div>
+                    <div className="coaching-choice-row">
+                      <label><input type="radio" name="customerFollowUp" checked={coachingDraft.customerFollowUp === '1'} onChange={() => handleCoachingDraftChange('customerFollowUp', '1')} /> Đúng (1)</label>
+                      <label><input type="radio" name="customerFollowUp" checked={coachingDraft.customerFollowUp === '0'} onChange={() => handleCoachingDraftChange('customerFollowUp', '0')} /> Sai (0)</label>
+                    </div>
+                  </div>
+
+                  <div className="coaching-section">
+                    <div className="coaching-section-title">KẾT QUẢ TƯ VẤN</div>
+                    {isCoachingForm1 ? (
+                      <div className="coaching-toggle-row">
+                        <span>Cuộc tư vấn đủ chuẩn</span>
+                        <label className="coaching-switch"><input type="checkbox" checked={coachingDraft.consultStandard === '1'} onChange={(e) => handleCoachingDraftChange('consultStandard', e.target.checked ? '1' : '0')} /><span className="coaching-switch-slider" /></label>
+                      </div>
+                    ) : null}
+                    {!isCoachingForm1 ? (
+                      <div className="coaching-toggle-row">
+                        <span>Số cuộc tư vấn có đủ 3 lớp</span>
+                        <label className="coaching-switch"><input type="checkbox" checked={coachingDraft.consultEnoughLayers === '1'} onChange={(e) => handleCoachingDraftChange('consultEnoughLayers', e.target.checked ? '1' : '0')} /><span className="coaching-switch-slider" /></label>
+                      </div>
+                    ) : null}
+                    {!isCoachingForm1 ? (
+                      <div className="coaching-toggle-row">
+                        <span>Số cuộc tư vấn có gắn giải pháp với nhu cầu</span>
+                        <label className="coaching-switch"><input type="checkbox" checked={coachingDraft.consultSolutionMatchingNeed === '1'} onChange={(e) => handleCoachingDraftChange('consultSolutionMatchingNeed', e.target.checked ? '1' : '0')} /><span className="coaching-switch-slider" /></label>
+                      </div>
+                    ) : null}
+                    {!isCoachingForm1 ? (
+                      <div className="coaching-toggle-row">
+                        <span>Số cuộc tư vấn có nói rõ lợi ích</span>
+                        <label className="coaching-switch"><input type="checkbox" checked={coachingDraft.consultClearBenefit === '1'} onChange={(e) => handleCoachingDraftChange('consultClearBenefit', e.target.checked ? '1' : '0')} /><span className="coaching-switch-slider" /></label>
+                      </div>
+                    ) : null}
+                    {!isCoachingForm1 ? (
+                      <div className="coaching-toggle-row">
+                        <span>Số cuộc tư vấn có nhắc thiệt hại tránh được</span>
+                        <label className="coaching-switch"><input type="checkbox" checked={coachingDraft.consultMentionLossAvoidance === '1'} onChange={(e) => handleCoachingDraftChange('consultMentionLossAvoidance', e.target.checked ? '1' : '0')} /><span className="coaching-switch-slider" /></label>
+                      </div>
+                    ) : null}
+                    <div className="coaching-toggle-row">
+                      <span>Không báo giá sớm</span>
+                      <label className="coaching-switch"><input type="checkbox" checked={coachingDraft.noEarlyQuote === '1'} onChange={(e) => handleCoachingDraftChange('noEarlyQuote', e.target.checked ? '1' : '0')} /><span className="coaching-switch-slider" /></label>
+                    </div>
+                    <div className="coaching-toggle-row">
+                      <span>Chốt dịch vụ thành công</span>
+                      <label className="coaching-switch"><input type="checkbox" checked={coachingDraft.closedService === '1'} onChange={(e) => handleCoachingDraftChange('closedService', e.target.checked ? '1' : '0')} /><span className="coaching-switch-slider" /></label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="coaching-section">
+                  <div className="coaching-section-title coaching-red">HIỆU QUẢ & THEO DÕI</div>
+                  <div className="coaching-basic-grid">
+                    <div>
+                      <label className="coaching-label">Doanh thu cá nhân (VND)</label>
+                      <input className="field" type="number" min="0" placeholder="0" value={coachingDraft.personalRevenue} onChange={(e) => handleCoachingDraftChange('personalRevenue', e.target.value)} />
+                    </div>
+                    <div>
+                      <div className="coaching-label">Trạng thái Follow up</div>
+                      <div className="coaching-choice-row">
+                        <label><input type="radio" name="nextFollowRequired" checked={coachingDraft.nextFollowRequired === '1'} onChange={() => handleCoachingDraftChange('nextFollowRequired', '1')} /> Cần Follow (1)</label>
+                        <label><input type="radio" name="nextFollowRequired" checked={coachingDraft.nextFollowRequired === '0'} onChange={() => handleCoachingDraftChange('nextFollowRequired', '0')} /> Không (0)</label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="coaching-label">Lịch hẹn tiếp theo</label>
+                      <input className="field" type="date" value={coachingDraft.nextFollowSchedule} onChange={(e) => handleCoachingDraftChange('nextFollowSchedule', e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 10 }}>
+                    <label className="coaching-label">Ghi chú chi tiết bước tiếp theo</label>
+                    <textarea className="field" rows={4} placeholder="Ghi chú cụ thể..." value={coachingDraft.nextFollowStep} onChange={(e) => handleCoachingDraftChange('nextFollowStep', e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="coaching-footer-actions">
+                  <button className="btn outline" onClick={() => setShowCoachingForm(false)}>Hủy bỏ</button>
+                  <button className="btn outline" onClick={resetCoachingDraft}>Xóa trắng dữ liệu</button>
+                  <button className="btn" onClick={handleSaveCoachingDraft} disabled={coachingSaving}>{coachingSaving ? 'Đang lưu...' : 'Lưu thông tin'}</button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className="journey-detail-header">
             <h3 style={{ margin: 0, color: '#0f172a' }}>Chi tiết đối chiếu ngày {selectedDateKey || '--'}</h3>

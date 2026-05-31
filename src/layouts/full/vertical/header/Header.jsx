@@ -87,6 +87,14 @@ const Header = () => {
         ) : null}
         {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
           <NavLink
+            to="/discipline/manager-coaching"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Phiếu coaching
+          </NavLink>
+        ) : null}
+        {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+          <NavLink
             to="/discipline/manager-review"
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
           >
@@ -149,10 +157,42 @@ const Header = () => {
         ) : null}
         {(user?.role === 'PROVINCIAL_VIEWER' || user?.role === 'ADMIN') ? (
           <NavLink
+            to="/discipline/provincial-statistics-manager-coaching"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Thống kê Coaching QL
+          </NavLink>
+        ) : null}
+        {(user?.role === 'PROVINCIAL_VIEWER' || user?.role === 'ADMIN') ? (
+          <NavLink
             to="/discipline/journal-submissions"
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
           >
             Tỷ lệ nhập nhật ký
+          </NavLink>
+        ) : null}
+        {(user?.role === 'PROVINCIAL_VIEWER' || user?.role === 'ADMIN') ? (
+          <NavLink
+            to="/discipline/coaching-provincial-report"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Báo cáo Coaching
+          </NavLink>
+        ) : null}
+        {(user?.role === 'PROVINCIAL_VIEWER' || user?.role === 'ADMIN') ? (
+          <NavLink
+            to="/discipline/coaching-provincial-report-gd2"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Báo cáo Coaching GD2
+          </NavLink>
+        ) : null}
+        {user?.role === 'ADMIN' ? (
+          <NavLink
+            to="/system-administration/ward-catalogs"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Danh mục phường/xã
           </NavLink>
         ) : null}
         {user?.role === 'ADMIN' ? (
@@ -161,6 +201,14 @@ const Header = () => {
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
           >
             Cấu hình giai đoạn
+          </NavLink>
+        ) : null}
+        {user?.role === 'ADMIN' ? (
+          <NavLink
+            to="/system-administration/coaching-phase-configs"
+            className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}
+          >
+            Giai đoạn coaching
           </NavLink>
         ) : null}
         {user?.role === 'ADMIN' ? (

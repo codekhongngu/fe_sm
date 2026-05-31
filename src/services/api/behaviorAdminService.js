@@ -24,6 +24,12 @@ const behaviorAdminService = {
     axiosInstance.post('/api/admin/journey-phase-configs', payload).then((res) => res.data),
   updateJourneyPhaseConfig: (id, payload) =>
     axiosInstance.patch(`/api/admin/journey-phase-configs/${id}`, payload).then((res) => res.data),
+  getCoachingPhaseConfigs: () =>
+    axiosInstance.get('/api/admin/coaching-phase-configs').then((res) => res.data),
+  createCoachingPhaseConfig: (payload) =>
+    axiosInstance.post('/api/admin/coaching-phase-configs', payload).then((res) => res.data),
+  updateCoachingPhaseConfig: (id, payload) =>
+    axiosInstance.patch(`/api/admin/coaching-phase-configs/${id}`, payload).then((res) => res.data),
 };
 
 export default behaviorAdminService;
