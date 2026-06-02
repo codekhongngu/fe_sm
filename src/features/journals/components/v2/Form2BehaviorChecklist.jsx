@@ -38,7 +38,7 @@ const Form2BehaviorChecklist = ({
   const [mgrPersistence, setMgrPersistence] = useState(initialData.mgrPersistence || false);
 
   // Overall Status
-  const status = initialData.status || 'PENDING'; // 'PENDING' | 'APPROVED' | 'REJECTED'
+  const status = initialData.status || 'NOT_SUBMITTED'; // 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED'
 
   // Logic Validations
   const isZeroCustomers = Number(customersMet) === 0 && customersMet !== '';

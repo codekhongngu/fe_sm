@@ -378,8 +378,8 @@ const Journey90Page = () => {
     if (formType === 'form9') isFilled = !!extraLogs?.form9;
     if (formType === 'form12') isFilled = !!extraLogs?.form12;
 
-    // Nếu form chưa nhập thì luôn là PENDING, không hiển thị ĐẠT (APPROVED) dù nhật ký chung đã được duyệt
-    if (!isFilled) return 'PENDING';
+    // Chưa có dữ liệu thật thì phải là chưa nộp, không được hiển thị "Chờ duyệt"
+    if (!isFilled) return 'NOT_SUBMITTED';
 
     // Nếu quản lý đã duyệt (status = APPROVED) -> khóa
     let reviewStatus = 'PENDING';

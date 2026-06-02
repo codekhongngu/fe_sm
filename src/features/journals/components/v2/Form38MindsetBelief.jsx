@@ -12,7 +12,7 @@ const Form38MindsetBelief = ({
   const [newMindset, setNewMindset] = useState(initialData.newMindset || '');
   const [actionChange, setActionChange] = useState(initialData.actionChange || '');
 
-  const status = initialData.status || 'PENDING';
+  const status = initialData.status || 'NOT_SUBMITTED';
   const isReadOnly = status === 'APPROVED' || userRole === 'MANAGER';
 
   const handleSubmit = (e) => {

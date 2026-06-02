@@ -10,7 +10,7 @@ const Form5QuickNote = ({
   const [lessonLearned, setLessonLearned] = useState(initialData.lessonLearned || '');
   const [actionPlan, setActionPlan] = useState(initialData.actionPlan || '');
 
-  const status = initialData.status || 'PENDING';
+  const status = initialData.status || 'NOT_SUBMITTED';
   const isReadOnly = status === 'APPROVED' || userRole === 'MANAGER';
 
   const handleSubmit = (e) => {

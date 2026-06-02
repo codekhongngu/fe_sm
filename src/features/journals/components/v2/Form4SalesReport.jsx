@@ -31,7 +31,7 @@ const Form4SalesReport = ({
         ],
   );
 
-  const status = initialData.status || 'PENDING';
+  const status = initialData.status || 'NOT_SUBMITTED';
   const isReadOnly = status === 'APPROVED' || userRole === 'MANAGER';
 
   useEffect(() => {
