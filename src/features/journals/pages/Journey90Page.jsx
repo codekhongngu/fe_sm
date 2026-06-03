@@ -292,7 +292,13 @@ const Journey90Page = () => {
 
       await journalService.saveDailyCoachingCustomer(payload);
       await loadCoachingCustomers(coachingDateKey, activeCoachingForm);
-      setInfoText(`Đã lưu form coaching cho ngày ${coachingDateKey}.`);
+      const successMessage = isCoachingForm1
+        ? 'Thêm mới khách hàng coaching giai đoạn 1 thành công.'
+        : `Đã lưu form coaching cho ngày ${coachingDateKey}.`;
+      setInfoText(successMessage);
+      if (isCoachingForm1) {
+        window.alert(successMessage);
+      }
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Lưu form coaching thất bại.');
     } finally {
@@ -1667,6 +1673,7 @@ const Journey90Page = () => {
                       setErrorText('Chưa đến ngày này, chưa thể điền form coaching.');
                       return;
                     }
+                    setInfoText('');
                     setErrorText('');
                     setShowCoachingForm(true);
                   }}
@@ -1844,6 +1851,12 @@ const Journey90Page = () => {
                     <button className="btn outline" onClick={() => setShowCoachingForm(false)}>Đóng</button>
                   </div>
                 </div>
+
+                {isCoachingForm1 && infoText ? (
+                  <div className="status-ok" style={{ marginBottom: 12 }}>
+                    {infoText}
+                  </div>
+                ) : null}
 
                 <div className="coaching-section">
                   <div className="coaching-section-title">THÔNG TIN CƠ BẢN</div>
