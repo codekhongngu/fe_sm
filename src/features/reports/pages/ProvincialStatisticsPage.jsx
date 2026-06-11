@@ -19,11 +19,13 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
   const [unitId, setUnitId] = useState('');
   const [units, setUnits] = useState([]);
   const [stats, setStats] = useState(null);
+  const [tncCompetition, setTncCompetition] = useState(null);
   const [coachingRows, setCoachingRows] = useState([]);
   const [coachingEmployees, setCoachingEmployees] = useState([]);
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [statusText, setStatusText] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [exportingTncCompetition, setExportingTncCompetition] = useState(false);
   const [exportingCoaching, setExportingCoaching] = useState(false);
   const [exportingManagerCoaching, setExportingManagerCoaching] = useState(false);
 
@@ -32,13 +34,15 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
     setErrorText('');
     setStatusText('');
     try {
-      const [statsData, coachingData, coachingEmployeesData, unitData] = await Promise.all([
+      const [statsData, tncCompetitionData, coachingData, coachingEmployeesData, unitData] = await Promise.all([
         managerDailyScoreService.getStatistics({ fromDate, toDate, unitId: unitId || undefined }),
+        managerDailyScoreService.getTncCompetition({ fromDate, toDate, unitId: unitId || undefined }),
         managerCoachingService.getList({ fromDate, toDate }),
         managerCoachingService.getEmployees().catch(() => []),
         userService.getUnits().catch(() => []),
       ]);
       setStats(statsData || null);
+      setTncCompetition(tncCompetitionData || null);
       setCoachingRows(Array.isArray(coachingData) ? coachingData : []);
       setCoachingEmployees(Array.isArray(coachingEmployeesData) ? coachingEmployeesData : []);
       setUnits(Array.isArray(unitData) ? unitData : []);
@@ -241,6 +245,36 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
     }
   };
 
+  const exportTncCompetitionReport = async () => {
+    setErrorText('');
+    setStatusText('');
+    if (!fromDate || !toDate) {
+      setErrorText('Vui lòng chọn từ ngày và đến ngày để xuất thi đua TNC');
+      return;
+    }
+    setExportingTncCompetition(true);
+    try {
+      const result = await managerDailyScoreService.exportTncCompetition({
+        fromDate,
+        toDate,
+        unitId: unitId || undefined,
+      });
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã xuất Excel Thi đua TNC');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Xuất Excel Thi đua TNC thất bại');
+    } finally {
+      setExportingTncCompetition(false);
+    }
+  };
+
   const exportCoachingProvincial = async () => {
     setErrorText('');
     setStatusText('');
@@ -355,8 +389,14 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
             ))}
           </select>
           <button className="btn outline" onClick={load}>Lọc thống kê</button>
-          <button className="btn" onClick={exportProvincialReport} disabled={exporting}>
-            {exporting ? 'Đang xuất...' : 'Xuất báo cáo Excel'}
+          <button
+            className="btn"
+            onClick={activeTab === 'tncCompetition' ? exportTncCompetitionReport : exportProvincialReport}
+            disabled={exporting || exportingTncCompetition}
+          >
+            {activeTab === 'tncCompetition'
+              ? (exportingTncCompetition ? 'Đang xuất...' : 'Xuất Excel Thi đua TNC')
+              : (exporting ? 'Đang xuất...' : 'Xuất báo cáo Excel')}
           </button>
           <button className="btn" style={{ background: '#0f766e' }} onClick={exportCoachingProvincial} disabled={exportingCoaching}>
             {exportingCoaching ? 'Đang xuất...' : 'Xuất báo cáo Coaching'}
@@ -374,6 +414,9 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
           </button>
           <button className={`btn ${activeTab === 'unit' ? '' : 'outline'}`} onClick={() => setActiveTab('unit')}>
             Thống kê đơn vị
+          </button>
+          <button className={`btn ${activeTab === 'tncCompetition' ? '' : 'outline'}`} onClick={() => setActiveTab('tncCompetition')}>
+            Thi đua TNC
           </button>
           <button className={`btn ${activeTab === 'managerCoaching' ? '' : 'outline'}`} onClick={() => setActiveTab('managerCoaching')}>
             Thống kê Coaching quản lý
@@ -435,6 +478,148 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
                 ) : null}
               </tbody>
             </table>
+          </div>
+        ) : activeTab === 'tncCompetition' ? (
+          <div>
+            <div className="card" style={{ marginBottom: 12, background: '#f8fafc' }}>
+              <div><strong>Số ngày hợp lệ:</strong> {Number(tncCompetition?.validDayCount || 0)}</div>
+              <div style={{ marginTop: 6 }}>
+                <strong>Ngày nghỉ bị loại:</strong>{' '}
+                {(tncCompetition?.excludedHolidayDates || []).length > 0
+                  ? tncCompetition.excludedHolidayDates.join(', ')
+                  : 'Không có'}
+              </div>
+            </div>
+
+            <div className="table-wrap" style={{ marginBottom: 14 }}>
+              <table className="table" style={{ minWidth: 960 }}>
+                <thead>
+                  <tr>
+                    <th colSpan={6} style={{ textAlign: 'left', background: '#eff6ff' }}>Thi đua học tập</th>
+                  </tr>
+                  <tr>
+                    <th>Hạng</th>
+                    <th>Đơn vị</th>
+                    <th>Mã nhân viên</th>
+                    <th>Họ và tên</th>
+                    <th>Tổng điểm</th>
+                    <th>BQ điểm/ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tncCompetition?.learningRows || []).map((row, index) => (
+                    <tr key={`learning-${row.employeeId}`}>
+                      <td>{index + 1}</td>
+                      <td>{row.unitName}</td>
+                      <td>{row.employeeCode || ''}</td>
+                      <td>{row.fullName}</td>
+                      <td>{row.totalScore}</td>
+                      <td><strong>{row.averageScore}</strong></td>
+                    </tr>
+                  ))}
+                  {!loading && (tncCompetition?.learningRows || []).length === 0 ? (
+                    <tr><td colSpan={6}>Không có dữ liệu thi đua học tập</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="table-wrap" style={{ marginBottom: 14 }}>
+              <table className="table" style={{ minWidth: 960 }}>
+                <thead>
+                  <tr>
+                    <th colSpan={6} style={{ textAlign: 'left', background: '#ecfeff' }}>Thi đua thực hành</th>
+                  </tr>
+                  <tr>
+                    <th>Hạng</th>
+                    <th>Đơn vị</th>
+                    <th>Mã nhân viên</th>
+                    <th>Họ và tên</th>
+                    <th>Tổng điểm</th>
+                    <th>BQ điểm/ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tncCompetition?.behaviorRows || []).map((row, index) => (
+                    <tr key={`behavior-${row.employeeId}`}>
+                      <td>{index + 1}</td>
+                      <td>{row.unitName}</td>
+                      <td>{row.employeeCode || ''}</td>
+                      <td>{row.fullName}</td>
+                      <td>{row.totalScore}</td>
+                      <td><strong>{row.averageScore}</strong></td>
+                    </tr>
+                  ))}
+                  {!loading && (tncCompetition?.behaviorRows || []).length === 0 ? (
+                    <tr><td colSpan={6}>Không có dữ liệu thi đua thực hành</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="table-wrap" style={{ marginBottom: 14 }}>
+              <table className="table" style={{ minWidth: 960 }}>
+                <thead>
+                  <tr>
+                    <th colSpan={6} style={{ textAlign: 'left', background: '#f0fdf4' }}>Thi đua nâng cao hiệu quả hoạt động</th>
+                  </tr>
+                  <tr>
+                    <th>Hạng</th>
+                    <th>Đơn vị</th>
+                    <th>Mã nhân viên</th>
+                    <th>Họ và tên</th>
+                    <th>Tổng điểm</th>
+                    <th>BQ điểm/ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tncCompetition?.performanceRows || []).map((row, index) => (
+                    <tr key={`performance-${row.employeeId}`}>
+                      <td>{index + 1}</td>
+                      <td>{row.unitName}</td>
+                      <td>{row.employeeCode || ''}</td>
+                      <td>{row.fullName}</td>
+                      <td>{row.totalScore}</td>
+                      <td><strong>{row.averageScore}</strong></td>
+                    </tr>
+                  ))}
+                  {!loading && (tncCompetition?.performanceRows || []).length === 0 ? (
+                    <tr><td colSpan={6}>Không có dữ liệu thi đua nâng cao hiệu quả hoạt động</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="table-wrap">
+              <table className="table" style={{ minWidth: 860 }}>
+                <thead>
+                  <tr>
+                    <th colSpan={5} style={{ textAlign: 'left', background: '#fef3c7' }}>Tổng điểm tập thể</th>
+                  </tr>
+                  <tr>
+                    <th>Hạng</th>
+                    <th>Đơn vị</th>
+                    <th>Số nhân viên</th>
+                    <th>Tổng điểm</th>
+                    <th>Điểm tập thể BQ/ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tncCompetition?.collectiveRows || []).map((row, index) => (
+                    <tr key={`collective-${row.unitId}`}>
+                      <td>{index + 1}</td>
+                      <td>{row.unitName}</td>
+                      <td>{row.employeeCount}</td>
+                      <td>{row.totalScore}</td>
+                      <td><strong>{row.averageScore}</strong></td>
+                    </tr>
+                  ))}
+                  {!loading && (tncCompetition?.collectiveRows || []).length === 0 ? (
+                    <tr><td colSpan={5}>Không có dữ liệu tổng điểm tập thể</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div>

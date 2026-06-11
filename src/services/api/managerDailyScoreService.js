@@ -14,6 +14,20 @@ const managerDailyScoreService = {
     axiosInstance.post('/manager-daily-scores/entry', payload).then((res) => res.data),
   getStatistics: (filters) =>
     axiosInstance.get('/manager-daily-scores/statistics', { params: filters }).then((res) => res.data),
+  getTncCompetition: (filters) =>
+    axiosInstance.get('/manager-daily-scores/tnc-competition', { params: filters }).then((res) => res.data),
+  exportTncCompetition: (filters) =>
+    axiosInstance
+      .get('/manager-daily-scores/tnc-competition-export', {
+        params: filters,
+        responseType: 'blob',
+      })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']
+            ?.match(/filename="?([^"]+)"?/)?.[1] || 'thi-dua-tnc.xlsx',
+      })),
   exportStatistics: (filters) =>
     axiosInstance
       .get('/manager-daily-scores/statistics-export', { params: filters, responseType: 'blob' })
