@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import managerDailyScoreService from '../../../services/api/managerDailyScoreService';
 import managerCoachingService from '../../../services/api/managerCoachingService';
 import journalService from '../../../services/api/journalService';
@@ -29,33 +29,67 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
   const [exportingCoaching, setExportingCoaching] = useState(false);
   const [exportingManagerCoaching, setExportingManagerCoaching] = useState(false);
 
-  const load = async () => {
+  const loadUnits = useCallback(async () => {
+    try {
+      const unitData = await userService.getUnits();
+      setUnits(Array.isArray(unitData) ? unitData : []);
+    } catch (error) {
+      setUnits([]);
+    }
+  }, []);
+
+  const load = useCallback(async (tab = activeTab) => {
     setLoading(true);
     setErrorText('');
     setStatusText('');
     try {
-      const [statsData, tncCompetitionData, coachingData, coachingEmployeesData, unitData] = await Promise.all([
-        managerDailyScoreService.getStatistics({ fromDate, toDate, unitId: unitId || undefined }),
-        managerDailyScoreService.getTncCompetition({ fromDate, toDate, unitId: unitId || undefined }),
-        managerCoachingService.getList({ fromDate, toDate }),
-        managerCoachingService.getEmployees().catch(() => []),
-        userService.getUnits().catch(() => []),
-      ]);
-      setStats(statsData || null);
-      setTncCompetition(tncCompetitionData || null);
-      setCoachingRows(Array.isArray(coachingData) ? coachingData : []);
-      setCoachingEmployees(Array.isArray(coachingEmployeesData) ? coachingEmployeesData : []);
-      setUnits(Array.isArray(unitData) ? unitData : []);
+      if (tab === 'tncCompetition') {
+        const tncCompetitionData = await managerDailyScoreService.getTncCompetition({
+          fromDate,
+          toDate,
+          unitId: unitId || undefined,
+        });
+        setTncCompetition(tncCompetitionData || null);
+      } else if (tab === 'managerCoaching') {
+        const [coachingDataResult, coachingEmployeesResult] = await Promise.allSettled([
+          managerCoachingService.getList({ fromDate, toDate }),
+          managerCoachingService.getEmployees(),
+        ]);
+
+        if (coachingDataResult.status === 'rejected') {
+          throw coachingDataResult.reason;
+        }
+
+        setCoachingRows(
+          Array.isArray(coachingDataResult.value) ? coachingDataResult.value : [],
+        );
+        setCoachingEmployees(
+          coachingEmployeesResult.status === 'fulfilled' && Array.isArray(coachingEmployeesResult.value)
+            ? coachingEmployeesResult.value
+            : [],
+        );
+      } else {
+        const statsData = await managerDailyScoreService.getStatistics({
+          fromDate,
+          toDate,
+          unitId: unitId || undefined,
+        });
+        setStats(statsData || null);
+      }
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Không tải được dữ liệu thống kê');
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, fromDate, toDate, unitId]);
 
   useEffect(() => {
-    load();
-  }, []);
+    loadUnits();
+  }, [loadUnits]);
+
+  useEffect(() => {
+    load(activeTab);
+  }, [activeTab, load]);
 
   const criteria = (stats?.template?.sections || []).flatMap((section) => section.items || []);
 
@@ -388,7 +422,7 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
               <option key={unit.id} value={unit.id}>{unit.name}</option>
             ))}
           </select>
-          <button className="btn outline" onClick={load}>Lọc thống kê</button>
+          <button className="btn outline" onClick={() => load(activeTab)}>Lọc thống kê</button>
           <button
             className="btn"
             onClick={activeTab === 'tncCompetition' ? exportTncCompetitionReport : exportProvincialReport}
