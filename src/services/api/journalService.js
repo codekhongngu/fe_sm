@@ -115,6 +115,15 @@ const journalService = {
           res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
           'bao-cao-mau-2-3-4-5.xlsx',
       })),
+  exportApprovedJournalsForms7912: (params) =>
+    axiosInstance
+      .get('/api/manager/journals/approved/export-forms-7-9-12', { params, responseType: 'blob' })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
+          'bao-cao-mau-7-9-12.xlsx',
+      })),
   getJournalSubmissionsStats: (date) =>
     axiosInstance.get('/api/reports/journal-submissions', { params: { date } }).then((res) => res.data),
   getCoachingProvincialData: (params) =>

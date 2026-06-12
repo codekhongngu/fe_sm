@@ -51,7 +51,11 @@ const Router = () => {
         <Route
           path="discipline/manager-coaching"
           element={
-            <RoleGuard user={user} roles={['MANAGER', 'ADMIN']}>
+            <RoleGuard
+              user={user}
+              roles={['MANAGER', 'ADMIN']}
+              allow={!!user?.canManageCoaching}
+            >
               <ManagerCoachingPage />
             </RoleGuard>
           }

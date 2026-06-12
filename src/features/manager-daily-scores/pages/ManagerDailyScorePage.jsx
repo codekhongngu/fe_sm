@@ -54,6 +54,7 @@ const ManagerDailyScorePage = () => {
   const [selfScoreMap, setSelfScoreMap] = useState({});
   const [employeeNoteMap, setEmployeeNoteMap] = useState({});
   const [sheetStatus, setSheetStatus] = useState('');
+  const [importedMetrics, setImportedMetrics] = useState(null);
   const [fromDate, setFromDate] = useState(todayKey);
   const [toDate, setToDate] = useState(todayKey);
   const [stats, setStats] = useState(null);
@@ -211,6 +212,7 @@ const ManagerDailyScorePage = () => {
     setSelfScoreMap(initialSelfScoreMap);
     setEmployeeNoteMap(initialEmployeeNoteMap);
     setSheetStatus(data?.sheet?.status || '');
+    setImportedMetrics(data?.importedMetrics || null);
   };
 
   const handleSelfScoreChange = (criteriaId, value) => {
@@ -446,11 +448,41 @@ const ManagerDailyScorePage = () => {
           <div style={{ marginTop: 8, color: '#334155' }}>
             Nhân viên đang chọn: <strong>{selectedEmployee?.fullName || '-'}</strong> | Đơn vị:{' '}
             <strong>{selectedEmployee?.unitName || '-'}</strong>
+            {selectedEmployee?.employeeCode ? (
+              <> | Mã nhân viên: <strong>{selectedEmployee.employeeCode}</strong></>
+            ) : null}
             {user?.role !== 'EMPLOYEE' && (
               <> | Tổng điểm hiện tại: <strong>{currentTotalScore}/100</strong></>
             )}
           </div>
         </section>
+
+        {importedMetrics ? (
+          <section className="card" style={{ marginBottom: 12 }}>
+            <h3 style={{ marginTop: 0 }}>Số liệu ĐHKD đã import</h3>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 10,
+              }}
+            >
+              <div><strong>Số cuộc gọi CSKH thành công:</strong> {Number(importedMetrics.successfulCareCalls || 0)}</div>
+              <div><strong>Số dịch vụ thành công:</strong> {Number(importedMetrics.successfulServices || 0)}</div>
+              <div><strong>Số gói cao PTM:</strong> {Number(importedMetrics.highPtmPackages || 0)}</div>
+              <div>
+                <strong>Doanh thu cá nhân:</strong> {Number(importedMetrics.personalRevenueThousand || 0) * 1000} đồng
+                <span style={{ color: '#64748b' }}> ({Number(importedMetrics.personalRevenueThousand || 0)} ngàn đồng để chấm điểm)</span>
+              </div>
+            </div>
+            <div style={{ marginTop: 8, color: '#64748b', fontSize: 13 }}>
+              Nguồn file: <strong>{importedMetrics.sourceFileName || '-'}</strong>
+              {importedMetrics.importedByName ? (
+                <> | Người import: <strong>{importedMetrics.importedByName}</strong></>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         <section className="card" style={{ marginBottom: 12 }}>
           <h3 style={{ marginTop: 0 }}>Phiếu chấm điểm</h3>

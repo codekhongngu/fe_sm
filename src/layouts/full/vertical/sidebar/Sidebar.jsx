@@ -24,7 +24,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         >
           Nhật ký hằng ngày
         </NavLink>
-        {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+        {(user?.role === 'MANAGER' || user?.role === 'ADMIN' || user?.canManageCoaching) ? (
           <NavLink
             to="/discipline/manager-coaching"
             className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}

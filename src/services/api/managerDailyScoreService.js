@@ -12,6 +12,26 @@ const managerDailyScoreService = {
       .then((res) => res.data),
   submitEntry: (payload) =>
     axiosInstance.post('/manager-daily-scores/entry', payload).then((res) => res.data),
+  importPerformanceData: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return axiosInstance
+      .post('/manager-daily-scores/import-performance-data', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((res) => res.data);
+  },
+  downloadImportPerformanceTemplate: () =>
+    axiosInstance
+      .get('/manager-daily-scores/import-performance-template', {
+        responseType: 'blob',
+      })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']
+            ?.match(/filename="?([^"]+)"?/)?.[1] || 'mau-import-so-lieu-cham-diem.xlsx',
+      })),
   getStatistics: (filters) =>
     axiosInstance.get('/manager-daily-scores/statistics', { params: filters }).then((res) => res.data),
   getTncCompetition: (filters) =>

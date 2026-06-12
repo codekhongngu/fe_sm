@@ -26,6 +26,7 @@ const UserManagementPage = () => {
   const [newUserRole, setNewUserRole] = useState('EMPLOYEE');
   const [newUserUnitId, setNewUserUnitId] = useState('');
   const [newTelegramChatId, setNewTelegramChatId] = useState('');
+  const [newCanManageCoaching, setNewCanManageCoaching] = useState(false);
   const [editingUserId, setEditingUserId] = useState('');
   const [editUsername, setEditUsername] = useState('');
   const [editFullName, setEditFullName] = useState('');
@@ -33,6 +34,7 @@ const UserManagementPage = () => {
   const [editUserRole, setEditUserRole] = useState('EMPLOYEE');
   const [editUserUnitId, setEditUserUnitId] = useState('');
   const [editTelegramChatId, setEditTelegramChatId] = useState('');
+  const [editCanManageCoaching, setEditCanManageCoaching] = useState(false);
   const [weeklyConfigs, setWeeklyConfigs] = useState([]);
   const [editingWeekId, setEditingWeekId] = useState('');
   const [weekName, setWeekName] = useState('');
@@ -229,6 +231,7 @@ const UserManagementPage = () => {
         role: newUserRole,
         unitId: newUserUnitId,
         telegramChatId: newTelegramChatId || undefined,
+        canManageCoaching: newCanManageCoaching,
       });
       setNewUsername('');
       setNewPassword('');
@@ -237,6 +240,7 @@ const UserManagementPage = () => {
       setNewUserRole('EMPLOYEE');
       setNewUserUnitId('');
       setNewTelegramChatId('');
+      setNewCanManageCoaching(false);
       setStatus('Tạo người dùng thành công');
       loadData();
     } catch (error) {
@@ -252,6 +256,7 @@ const UserManagementPage = () => {
     setEditUserRole(user.role || 'EMPLOYEE');
     setEditUserUnitId(user.unitId || '');
     setEditTelegramChatId(user.telegramChatId || '');
+    setEditCanManageCoaching(!!user.canManageCoaching);
   };
 
   const saveEditUser = async () => {
@@ -270,6 +275,7 @@ const UserManagementPage = () => {
         role: editUserRole,
         unitId: editUserUnitId,
         telegramChatId: editTelegramChatId || undefined,
+        canManageCoaching: editCanManageCoaching,
       });
       setStatus('Cập nhật thông tin người dùng thành công');
       setEditingUserId('');
@@ -279,6 +285,7 @@ const UserManagementPage = () => {
       setEditUserRole('EMPLOYEE');
       setEditUserUnitId('');
       setEditTelegramChatId('');
+      setEditCanManageCoaching(false);
       loadData();
     } catch (error) {
       setErrorText(error?.response?.data?.message || 'Cập nhật người dùng thất bại');
@@ -590,6 +597,14 @@ const UserManagementPage = () => {
                 onChange={(e) => setNewTelegramChatId(e.target.value)}
               />
             </div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+              <input
+                type="checkbox"
+                checked={newCanManageCoaching}
+                onChange={(e) => setNewCanManageCoaching(e.target.checked)}
+              />
+              Cho phép nhập Phiếu coaching cho nhân viên
+            </label>
             <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
               <button className="btn" onClick={createUser}>
                 Thêm người dùng
@@ -661,6 +676,14 @@ const UserManagementPage = () => {
                   onChange={(e) => setEditTelegramChatId(e.target.value)}
                 />
               </div>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={editCanManageCoaching}
+                  onChange={(e) => setEditCanManageCoaching(e.target.checked)}
+                />
+                Cho phép nhập Phiếu coaching cho nhân viên
+              </label>
               <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
                 <button className="btn" onClick={saveEditUser}>
                   Lưu cập nhật
@@ -675,6 +698,7 @@ const UserManagementPage = () => {
                     setEditUserRole('EMPLOYEE');
                     setEditUserUnitId('');
                     setEditTelegramChatId('');
+                    setEditCanManageCoaching(false);
                   }}
                 >
                   Hủy
@@ -727,6 +751,9 @@ const UserManagementPage = () => {
                         Mã NV: {user.employeeCode || '-'}
                       </div>
                       <div style={{ color: '#64748b', fontSize: 12 }}>{user.username}</div>
+                      {user.canManageCoaching ? (
+                        <div style={{ color: '#7c3aed', fontSize: 12 }}>Quyền: nhập Phiếu coaching</div>
+                      ) : null}
                     </td>
                     <td>{user?.unit?.name || '-'}</td>
                     <td>

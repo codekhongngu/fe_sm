@@ -85,7 +85,7 @@ const Header = () => {
             Nhật ký hằng tuần
           </NavLink>
         ) : null}
-        {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+        {(user?.role === 'MANAGER' || user?.role === 'ADMIN' || user?.canManageCoaching) ? (
           <NavLink
             to="/discipline/manager-coaching"
             className={({ isActive }) => `topbar-item ${isActive ? 'active' : ''}`}

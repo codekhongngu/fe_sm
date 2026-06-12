@@ -1,8 +1,10 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useSelector } from 'react-redux';
 import managerDailyScoreService from '../../../services/api/managerDailyScoreService';
 import managerCoachingService from '../../../services/api/managerCoachingService';
 import journalService from '../../../services/api/journalService';
 import userService from '../../../services/api/userService';
+import { selectAuth } from '../../../store/auth/AuthSlice';
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -12,6 +14,7 @@ const toPercent = (numerator, denominator) => {
 };
 
 const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
+  const { user } = useSelector(selectAuth);
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [fromDate, setFromDate] = useState(today);
@@ -24,10 +27,15 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
   const [coachingEmployees, setCoachingEmployees] = useState([]);
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [statusText, setStatusText] = useState('');
+  const [tncUseApprovedScore, setTncUseApprovedScore] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportingTncCompetition, setExportingTncCompetition] = useState(false);
   const [exportingCoaching, setExportingCoaching] = useState(false);
   const [exportingManagerCoaching, setExportingManagerCoaching] = useState(false);
+  const [importingPerformanceData, setImportingPerformanceData] = useState(false);
+  const importInputRef = useRef(null);
+  const canImportPerformance =
+    user?.role === 'PROVINCIAL_VIEWER' || user?.role === 'ADMIN';
 
   const loadUnits = useCallback(async () => {
     try {
@@ -48,6 +56,7 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
           fromDate,
           toDate,
           unitId: unitId || undefined,
+          useApprovedScore: tncUseApprovedScore,
         });
         setTncCompetition(tncCompetitionData || null);
       } else if (tab === 'managerCoaching') {
@@ -81,7 +90,7 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, fromDate, toDate, unitId]);
+  }, [activeTab, fromDate, toDate, unitId, tncUseApprovedScore]);
 
   useEffect(() => {
     loadUnits();
@@ -292,6 +301,7 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
         fromDate,
         toDate,
         unitId: unitId || undefined,
+        useApprovedScore: tncUseApprovedScore,
       });
       const url = window.URL.createObjectURL(result.blob);
       const link = document.createElement('a');
@@ -365,6 +375,55 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
     }
   };
 
+  const downloadImportTemplate = async () => {
+    setErrorText('');
+    setStatusText('');
+    try {
+      const result = await managerDailyScoreService.downloadImportPerformanceTemplate();
+      const url = window.URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText('Đã tải mẫu import Excel');
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Tải mẫu import thất bại');
+    }
+  };
+
+  const triggerImportPerformance = () => {
+    importInputRef.current?.click();
+  };
+
+  const handleImportPerformanceFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+    setErrorText('');
+    setStatusText('');
+    setImportingPerformanceData(true);
+    try {
+      const result = await managerDailyScoreService.importPerformanceData(file);
+      await load(activeTab);
+      const skippedCount = Number(result?.skippedCount || 0);
+      const importedCount = Number(result?.importedCount || 0);
+      setStatusText(
+        skippedCount > 0
+          ? `Đã import ${importedCount} dòng, bỏ qua ${skippedCount} dòng`
+          : `Đã import ${importedCount} dòng số liệu ĐHKD`,
+      );
+    } catch (error) {
+      setErrorText(error?.response?.data?.message || 'Import file Excel thất bại');
+    } finally {
+      setImportingPerformanceData(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-head">
@@ -376,6 +435,47 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
       {errorText ? <div className="status-err" style={{ marginBottom: 10 }}>{errorText}</div> : null}
       {statusText ? <div className="status-ok" style={{ marginBottom: 10 }}>{statusText}</div> : null}
       {loading ? <div>Đang tải dữ liệu...</div> : null}
+
+      {canImportPerformance ? (
+        <section className="card" style={{ marginBottom: 12 }}>
+          <h3 style={{ marginTop: 0 }}>Import số liệu ĐHKD</h3>
+          <div
+            style={{
+              marginBottom: 10,
+              padding: 12,
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 8,
+              color: '#334155',
+            }}
+          >
+            <div>- Chức năng này chỉ dùng cho tài khoản thống kê toàn tỉnh và import cho toàn hệ thống.</div>
+            <div>- Sheet dữ liệu cần có 6 cột tiếng Việt: Ngày chấm điểm, Mã nhân viên, Số cuộc gọi CSKH thành công, Số dịch vụ thành công, Số gói cao PTM, Doanh thu cá nhân (VND).</div>
+            <div>- Mã nhân viên dùng để ánh xạ với danh sách người dùng hiện có trong hệ thống.</div>
+            <div>- Doanh thu nhập đúng số thực tế theo VND, ví dụ 1.250.000 thì nhập 1250000; hệ thống tự quy đổi sang ngàn đồng để chấm điểm.</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn outline" onClick={downloadImportTemplate}>
+              Tải mẫu import Excel
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={triggerImportPerformance}
+              disabled={importingPerformanceData}
+            >
+              {importingPerformanceData ? 'Đang import...' : 'Import file Excel ĐHKD'}
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              style={{ display: 'none' }}
+              onChange={handleImportPerformanceFile}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section className="card" style={{ marginBottom: 12 }}>
         <h3 style={{ marginTop: 0 }}>Vinh danh (Top 5)</h3>
@@ -516,6 +616,17 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
         ) : activeTab === 'tncCompetition' ? (
           <div>
             <div className="card" style={{ marginBottom: 12, background: '#f8fafc' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={tncUseApprovedScore}
+                  onChange={(e) => setTncUseApprovedScore(e.target.checked)}
+                />
+                <span>Dùng điểm quản lý duyệt thay cho điểm nhân viên tự chấm</span>
+              </label>
+            </div>
+            <div className="card" style={{ marginBottom: 12, background: '#f8fafc' }}>
+              <div><strong>Nguồn điểm tự chấm:</strong> {tncUseApprovedScore ? 'Điểm đã được quản lý duyệt' : 'Điểm nhân viên tự chấm'}</div>
               <div><strong>Số ngày hợp lệ:</strong> {Number(tncCompetition?.validDayCount || 0)}</div>
               <div style={{ marginTop: 6 }}>
                 <strong>Ngày nghỉ bị loại:</strong>{' '}
