@@ -675,10 +675,10 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
             </div>
 
             <div className="table-wrap" style={{ marginBottom: 14 }}>
-              <table className="table" style={{ minWidth: 960 }}>
+              <table className="table" style={{ minWidth: 1080 }}>
                 <thead>
                   <tr>
-                    <th colSpan={6} style={{ textAlign: 'left', background: '#eff6ff' }}>Thi đua học tập</th>
+                    <th colSpan={7} style={{ textAlign: 'left', background: '#eff6ff' }}>Thi đua học tập</th>
                   </tr>
                   <tr>
                     <th>Hạng</th>
@@ -687,6 +687,7 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
                     <th>Họ và tên</th>
                     <th>Tổng điểm</th>
                     <th>BQ điểm/ngày</th>
+                    <th>Đánh giá học tập</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -698,20 +699,21 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
                       <td>{row.fullName}</td>
                       <td>{row.totalScore}</td>
                       <td><strong>{row.averageScore}</strong></td>
+                      <td>{row.assessmentLabel || ''}</td>
                     </tr>
                   ))}
                   {!loading && (tncCompetition?.learningRows || []).length === 0 ? (
-                    <tr><td colSpan={6}>Không có dữ liệu thi đua học tập</td></tr>
+                    <tr><td colSpan={7}>Không có dữ liệu thi đua học tập</td></tr>
                   ) : null}
                 </tbody>
               </table>
             </div>
 
             <div className="table-wrap" style={{ marginBottom: 14 }}>
-              <table className="table" style={{ minWidth: 960 }}>
+              <table className="table" style={{ minWidth: 1080 }}>
                 <thead>
                   <tr>
-                    <th colSpan={6} style={{ textAlign: 'left', background: '#ecfeff' }}>Thi đua thực hành</th>
+                    <th colSpan={7} style={{ textAlign: 'left', background: '#ecfeff' }}>Thi đua thực hành</th>
                   </tr>
                   <tr>
                     <th>Hạng</th>
@@ -720,6 +722,7 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
                     <th>Họ và tên</th>
                     <th>Tổng điểm</th>
                     <th>BQ điểm/ngày</th>
+                    <th>Đánh giá thực hành</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -731,10 +734,11 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
                       <td>{row.fullName}</td>
                       <td>{row.totalScore}</td>
                       <td><strong>{row.averageScore}</strong></td>
+                      <td>{row.assessmentLabel || ''}</td>
                     </tr>
                   ))}
                   {!loading && (tncCompetition?.behaviorRows || []).length === 0 ? (
-                    <tr><td colSpan={6}>Không có dữ liệu thi đua thực hành</td></tr>
+                    <tr><td colSpan={7}>Không có dữ liệu thi đua thực hành</td></tr>
                   ) : null}
                 </tbody>
               </table>
@@ -768,6 +772,41 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
                   ))}
                   {!loading && (tncCompetition?.performanceRows || []).length === 0 ? (
                     <tr><td colSpan={6}>Không có dữ liệu thi đua nâng cao hiệu quả hoạt động</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="table-wrap" style={{ marginBottom: 14 }}>
+              <table className="table" style={{ minWidth: 1080 }}>
+                <thead>
+                  <tr>
+                    <th colSpan={7} style={{ textAlign: 'left', background: '#fdf2f8' }}>Tổng hợp điểm I + II + III</th>
+                  </tr>
+                  <tr>
+                    <th>Hạng</th>
+                    <th>Đơn vị</th>
+                    <th>Mã nhân viên</th>
+                    <th>Họ và tên</th>
+                    <th>Tổng điểm</th>
+                    <th>BQ điểm/ngày</th>
+                    <th>Xếp hạng thi đua</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tncCompetition?.overallRows || []).map((row, index) => (
+                    <tr key={`overall-${row.employeeId}`}>
+                      <td>{index + 1}</td>
+                      <td>{row.unitName}</td>
+                      <td>{row.employeeCode || ''}</td>
+                      <td>{row.fullName}</td>
+                      <td>{row.totalScore}</td>
+                      <td><strong>{row.averageScore}</strong></td>
+                      <td>{row.competitionRankLabel || ''}</td>
+                    </tr>
+                  ))}
+                  {!loading && (tncCompetition?.overallRows || []).length === 0 ? (
+                    <tr><td colSpan={7}>Không có dữ liệu tổng hợp điểm I + II + III</td></tr>
                   ) : null}
                 </tbody>
               </table>
