@@ -7,7 +7,7 @@ const defaultBaseUrl =
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || defaultBaseUrl,
-  timeout: 30000,
+  timeout: 300000,
 });
 axiosInstance.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');

@@ -1,5 +1,7 @@
 import axiosInstance from '../../utils/http/axiosInstance';
 
+const REPORT_REQUEST_TIMEOUT = 180000;
+
 const managerDailyScoreService = {
   getCriteria: () => axiosInstance.get('/manager-daily-scores/criteria').then((res) => res.data),
   getEmployees: (keyword) =>
@@ -25,6 +27,7 @@ const managerDailyScoreService = {
     axiosInstance
       .get('/manager-daily-scores/import-performance-template', {
         responseType: 'blob',
+        timeout: REPORT_REQUEST_TIMEOUT,
       })
       .then((res) => ({
         blob: res.data,
@@ -33,14 +36,25 @@ const managerDailyScoreService = {
             ?.match(/filename="?([^"]+)"?/)?.[1] || 'mau-import-so-lieu-cham-diem.xlsx',
       })),
   getStatistics: (filters) =>
-    axiosInstance.get('/manager-daily-scores/statistics', { params: filters }).then((res) => res.data),
+    axiosInstance
+      .get('/manager-daily-scores/statistics', {
+        params: filters,
+        timeout: REPORT_REQUEST_TIMEOUT,
+      })
+      .then((res) => res.data),
   getTncCompetition: (filters) =>
-    axiosInstance.get('/manager-daily-scores/tnc-competition', { params: filters }).then((res) => res.data),
+    axiosInstance
+      .get('/manager-daily-scores/tnc-competition', {
+        params: filters,
+        timeout: REPORT_REQUEST_TIMEOUT,
+      })
+      .then((res) => res.data),
   exportTncCompetition: (filters) =>
     axiosInstance
       .get('/manager-daily-scores/tnc-competition-export', {
         params: filters,
         responseType: 'blob',
+        timeout: REPORT_REQUEST_TIMEOUT,
       })
       .then((res) => ({
         blob: res.data,
@@ -50,7 +64,11 @@ const managerDailyScoreService = {
       })),
   exportStatistics: (filters) =>
     axiosInstance
-      .get('/manager-daily-scores/statistics-export', { params: filters, responseType: 'blob' })
+      .get('/manager-daily-scores/statistics-export', {
+        params: filters,
+        responseType: 'blob',
+        timeout: REPORT_REQUEST_TIMEOUT,
+      })
       .then((res) => ({
         blob: res.data,
         fileName:
@@ -62,6 +80,7 @@ const managerDailyScoreService = {
       .get('/manager-daily-scores/provincial-statistics-export', {
         params: filters,
         responseType: 'blob',
+        timeout: REPORT_REQUEST_TIMEOUT,
       })
       .then((res) => ({
         blob: res.data,
@@ -74,6 +93,7 @@ const managerDailyScoreService = {
       .get('/manager-daily-scores/unit-statistics-export', {
         params: filters,
         responseType: 'blob',
+        timeout: REPORT_REQUEST_TIMEOUT,
       })
       .then((res) => ({
         blob: res.data,
