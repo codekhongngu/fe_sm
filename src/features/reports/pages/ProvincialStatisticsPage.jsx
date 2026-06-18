@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
+import * as XLSX from 'xlsx';
 import managerDailyScoreService from '../../../services/api/managerDailyScoreService';
 import managerCoachingService from '../../../services/api/managerCoachingService';
 import journalService from '../../../services/api/journalService';
@@ -398,6 +399,40 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
     importInputRef.current?.click();
   };
 
+  const downloadSkippedImportRows = (result) => {
+    const skippedRows = Array.isArray(result?.skipped) ? result.skipped : [];
+    if (!skippedRows.length) {
+      return;
+    }
+
+    const headers = Array.isArray(result?.skippedHeaders)
+      ? result.skippedHeaders.filter((header) => String(header || '').trim())
+      : [];
+
+    const exportRows = skippedRows.map((row) => {
+      const originalRow = row?.originalRow && typeof row.originalRow === 'object' ? row.originalRow : {};
+      const orderedRow = {};
+
+      headers.forEach((header) => {
+        orderedRow[header] = originalRow?.[header] ?? '';
+      });
+
+      if (!headers.length) {
+        Object.keys(originalRow || {}).forEach((key) => {
+          orderedRow[key] = originalRow[key] ?? '';
+        });
+      }
+
+      orderedRow['Lý do không import'] = row.reason || '';
+      return orderedRow;
+    });
+
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Du lieu loi');
+    XLSX.writeFile(workbook, result?.skippedFileName || 'du-lieu-khong-import-duoc.xlsx');
+  };
+
   const handleImportPerformanceFile = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -412,9 +447,12 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
       await load(activeTab);
       const skippedCount = Number(result?.skippedCount || 0);
       const importedCount = Number(result?.importedCount || 0);
+      if (skippedCount > 0) {
+        downloadSkippedImportRows(result);
+      }
       setStatusText(
         skippedCount > 0
-          ? `Đã import ${importedCount} dòng, bỏ qua ${skippedCount} dòng`
+          ? `Đã import ${importedCount} dòng, bỏ qua ${skippedCount} dòng và đã tải file Excel các dòng lỗi`
           : `Đã import ${importedCount} dòng số liệu ĐHKD`,
       );
     } catch (error) {
