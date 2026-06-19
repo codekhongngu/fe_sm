@@ -180,9 +180,9 @@ const ProvincialApprovedJournalsPage = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      setStatusText('Đã xuất file Excel Mẫu 7/9/12');
+      setStatusText('Đã xuất file Excel Mẫu 3/4/5/7/9/12');
     } catch (error) {
-      setErrorText(error?.response?.data?.message || 'Xuất file Excel Mẫu 7/9/12 thất bại');
+      setErrorText(error?.response?.data?.message || 'Xuất file Excel Mẫu 3/4/5/7/9/12 thất bại');
     } finally {
       setExportingForms7912(false);
     }
@@ -220,7 +220,7 @@ const ProvincialApprovedJournalsPage = () => {
             {exportingForms2345 ? 'Đang xuất...' : 'Xuất Excel Mẫu 2/3/4/5'}
           </button>
           <button className="btn outline" type="button" onClick={exportApprovedForms7912Excel} disabled={exportingForms7912}>
-            {exportingForms7912 ? 'Đang xuất...' : 'Xuất Excel Mẫu 7/9/12'}
+            {exportingForms7912 ? 'Đang xuất...' : 'Xuất Excel Mẫu 3/4/5/7/9/12'}
           </button>
         </div>
       </section>

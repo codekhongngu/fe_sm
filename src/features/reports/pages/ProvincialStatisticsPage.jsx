@@ -687,7 +687,7 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
                     <th>Họ và tên</th>
                     <th>Tổng điểm</th>
                     <th>BQ điểm/ngày</th>
-                    <th>Đánh giá học tập</th>
+                    <th>Xếp hạng học tập</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -722,7 +722,7 @@ const ProvincialStatisticsPage = ({ defaultTab = 'personal' }) => {
                     <th>Họ và tên</th>
                     <th>Tổng điểm</th>
                     <th>BQ điểm/ngày</th>
-                    <th>Đánh giá thực hành</th>
+                    <th>Xếp hạng thực hành</th>
                   </tr>
                 </thead>
                 <tbody>

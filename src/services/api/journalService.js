@@ -122,7 +122,7 @@ const journalService = {
         blob: res.data,
         fileName:
           res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
-          'bao-cao-mau-7-9-12.xlsx',
+          'bao-cao-mau-3-4-5-7-9-12.xlsx',
       })),
   getJournalSubmissionsStats: (date) =>
     axiosInstance.get('/api/reports/journal-submissions', { params: { date } }).then((res) => res.data),
