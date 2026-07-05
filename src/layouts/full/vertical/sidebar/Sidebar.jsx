@@ -46,6 +46,14 @@ const Sidebar = ({ isOpen, onClose }) => {
         >
           {user?.role === 'EMPLOYEE' ? 'Phiếu chấm điểm' : 'Chấm điểm ngày'}
         </NavLink>
+        {(user?.role === 'MANAGER' || user?.role === 'ADMIN' || user?.role === 'PROVINCIAL_VIEWER') ? (
+          <NavLink
+            to="/discipline/coaching-competition"
+            className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
+          >
+            Thi đua Coaching
+          </NavLink>
+        ) : null}
         {user?.role === 'ADMIN' ? (
           <NavLink
             to="/system-administration/ward-catalogs"

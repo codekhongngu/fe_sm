@@ -13,6 +13,7 @@ import ManagerReviewPage from '../features/journals/pages/ManagerReviewPage';
 import ManagerWeeklyReviewPage from '../features/journals/pages/ManagerWeeklyReviewPage';
 import ManagerCoachingPage from '../features/journals/pages/ManagerCoachingPage';
 import ManagerDailyScorePage from '../features/manager-daily-scores/pages/ManagerDailyScorePage';
+import CoachingCompetitionPage from '../features/manager-daily-scores/pages/CoachingCompetitionPage';
 import WeeklyReportPage from '../features/reports/pages/WeeklyReportPage';
 import ProvincialApprovedJournalsPage from '../features/reports/pages/ProvincialApprovedJournalsPage';
 import ProvincialStatisticsPage from '../features/reports/pages/ProvincialStatisticsPage';
@@ -89,6 +90,14 @@ const Router = () => {
           element={
             <RoleGuard user={user} roles={['EMPLOYEE', 'MANAGER', 'ADMIN', 'PROVINCIAL_VIEWER']}>
               <ManagerDailyScorePage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="discipline/coaching-competition"
+          element={
+            <RoleGuard user={user} roles={['MANAGER', 'ADMIN', 'PROVINCIAL_VIEWER']}>
+              <CoachingCompetitionPage />
             </RoleGuard>
           }
         />
