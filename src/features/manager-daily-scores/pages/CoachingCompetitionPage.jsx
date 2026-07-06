@@ -91,6 +91,26 @@ const CoachingCompetitionPage = () => {
     }
   };
 
+  const handleExportReport = async () => {
+    try {
+      const res = await managerDailyScoreService.exportCoachingCompetitionReportFile({
+        fromDate,
+        toDate,
+      });
+      const blob = new Blob([res.blob]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', decodeURIComponent(res.fileName));
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setErrorText(err?.response?.data?.message || 'Lỗi khi xuất file Excel');
+    }
+  };
+
   const units = reportData?.units || [];
   const employees = reportData?.employees || [];
 
@@ -157,6 +177,9 @@ const CoachingCompetitionPage = () => {
           </div>
           <button className="btn btn-primary" onClick={loadReport} disabled={loading}>
             {loading ? 'Đang tải...' : 'Xem báo cáo'}
+          </button>
+          <button className="btn btn-success" onClick={handleExportReport} disabled={loading}>
+            Xuất Excel báo cáo
           </button>
         </div>
         {errorText ? <div className="text-danger mt-2">{errorText}</div> : null}

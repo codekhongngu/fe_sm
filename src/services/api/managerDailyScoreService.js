@@ -118,6 +118,20 @@ const managerDailyScoreService = {
       })
       .then((res) => res.data),
 
+  exportCoachingCompetitionReportFile: ({ fromDate, toDate, unitId = '' }) =>
+    axiosInstance
+      .get('/manager-daily-scores/coaching-competition-export', {
+        params: { fromDate, toDate, unitId },
+        responseType: 'blob',
+      })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']
+            ?.split('filename=')[1]
+            ?.replace(/"/g, '') || `bao-cao-thi-dua-coaching-${fromDate}-den-${toDate}.xlsx`,
+      })),
+
   downloadCoachingCompetitionTemplate: () =>
     axiosInstance
       .get('/manager-daily-scores/coaching-competition-template', {
