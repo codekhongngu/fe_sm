@@ -159,6 +159,17 @@ const journalService = {
           res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
           'bao-cao-coaching-gd2.xlsx',
       })),
+  getCoachingProvincialGd2Summary: (params) =>
+    axiosInstance.get('/api/reports/coaching-provincial-gd2-summary', { params }).then((res) => res.data),
+  exportCoachingProvincialGd2Summary: (params) =>
+    axiosInstance
+      .get('/api/reports/coaching-provincial-gd2-summary-export', { params, responseType: 'blob' })
+      .then((res) => ({
+        blob: res.data,
+        fileName:
+          res.headers?.['content-disposition']?.match(/filename="?([^"]+)"?/)?.[1] ||
+          'bao-cao-coaching-gd2-tong-hop.xlsx',
+      })),
 };
 
 export default journalService;

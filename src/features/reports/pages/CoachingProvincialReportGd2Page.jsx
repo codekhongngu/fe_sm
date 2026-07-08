@@ -155,6 +155,26 @@ const CoachingProvincialReportGd2Page = () => {
                 <th>Khách follow tiếp theo/ Bước tiếp theo</th>
                 <th>Lịch hẹn follow tiếp theo</th>
               </tr>
+              <tr style={{ color: '#334155' }}>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th>có danh sách KH, phân loại KH, chuẩn bị câu hỏi... (Có=1, không=0)</th>
+                <th></th>
+                <th>Tên đường, phường (xã), số nhà/tel...</th>
+                <th>(Được KH cũ giới thiệu=1, không được giới thiệu=0)</th>
+                <th>Tư vấn lại KH tiềm năng đã được tư vấn chưa thành công (Đúng=1, sai=0)</th>
+                <th>(Đúng=1, sai=0)</th>
+                <th>(Đúng=1, sai=0)</th>
+                <th>(Đúng=1, sai=0)</th>
+                <th>(Đúng=1, sai=0)</th>
+                <th>(Đúng=1, sai=0)</th>
+                <th>(lắp đặt/hòa mạng=1, chưa lắp đặt/HM=0)</th>
+                <th></th>
+                <th>(có follow=1, không cần follow=0)</th>
+                <th>Lần follow ...(2): dd/mm/yyyy: Gọi lại/Tư vấn trực tiếp/nhờ giới thiệu/...</th>
+              </tr>
             </thead>
             <tbody>
               {groupedRows.length === 0 && !loading ? (

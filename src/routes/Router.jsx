@@ -19,7 +19,7 @@ import ProvincialApprovedJournalsPage from '../features/reports/pages/Provincial
 import ProvincialStatisticsPage from '../features/reports/pages/ProvincialStatisticsPage';
 import JournalSubmissionsPage from '../features/reports/pages/JournalSubmissionsPage';
 import CoachingProvincialReportHubPage from '../features/reports/pages/CoachingProvincialReportHubPage';
-import CoachingProvincialReportGd2Page from '../features/reports/pages/CoachingProvincialReportGd2Page';
+import CoachingProvincialReportGd2HubPage from '../features/reports/pages/CoachingProvincialReportGd2HubPage';
 import UserManagementPage from '../features/system-administration/pages/UserManagement/UserManagementPage';
 import RolePermissionPage from '../features/system-administration/pages/RolePermissionManagement/RolePermissionPage';
 import JourneyPhaseConfigPage from '../features/system-administration/pages/JourneyPhaseConfigPage';
@@ -158,10 +158,10 @@ const Router = () => {
           }
         />
         <Route
-          path="discipline/coaching-provincial-report-gd2"
+          path="discipline/coaching-provincial-report-gd2/*"
           element={
             <RoleGuard user={user} roles={['PROVINCIAL_VIEWER', 'ADMIN']}>
-              <CoachingProvincialReportGd2Page />
+              <CoachingProvincialReportGd2HubPage />
             </RoleGuard>
           }
         />

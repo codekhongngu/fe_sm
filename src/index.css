@@ -236,7 +236,8 @@ a {
 .table-wrap {
   border: 1px solid #e5eaef;
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: #fff;
 }
 
