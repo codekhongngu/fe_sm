@@ -175,6 +175,13 @@ const CoachingProvincialReportGd2Page = () => {
                 <th>(có follow=1, không cần follow=0)</th>
                 <th>Lần follow ...(2): dd/mm/yyyy: Gọi lại/Tư vấn trực tiếp/nhờ giới thiệu/...</th>
               </tr>
+              <tr>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map((n) => (
+                  <th key={n} style={{ textAlign: 'center', color: '#64748b', fontSize: 12, padding: '6px 8px' }}>
+                    {n}
+                  </th>
+                ))}
+              </tr>
             </thead>
             <tbody>
               {groupedRows.length === 0 && !loading ? (

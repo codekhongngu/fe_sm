@@ -137,7 +137,7 @@ const CoachingProvincialSummaryGd2Page = () => {
             <tbody>
               {!data && !loading ? (
                 <tr>
-                  <td colSpan={19} style={{ textAlign: 'center', color: '#94a3b8' }}>
+                  <td colSpan={18} style={{ textAlign: 'center', color: '#94a3b8' }}>
                     Chưa có dữ liệu. Nhấn "Xem báo cáo" để tải.
                   </td>
                 </tr>
