@@ -252,6 +252,13 @@ const Journey90Page = () => {
   };
 
   const handleSaveCoachingDraft = async () => {
+    if (coachingDateKey !== todayKey) {
+      setErrorText(
+        `Nhập form coaching khách hàng chỉ được thực hiện cho ngày nghiệp vụ hiện tại (${todayKey}).`,
+      );
+      return;
+    }
+
     if (!String(coachingDraft.customerName || '').trim()) {
       setErrorText('Vui lòng nhập tên khách hàng trước khi lưu coaching.');
       return;
