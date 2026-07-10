@@ -378,18 +378,61 @@ const Journey90Page = () => {
   };
 
   const getFormStatus = (formType, defaultStatus) => {
-    // Kiểm tra xem form đã được nhập chưa dựa trên dữ liệu hiện có
+    const hasText = (value) => typeof value === 'string' && value.trim().length > 0;
+    const hasAnyText = (row, keys) =>
+      !!row && keys.some((key) => hasText(row[key]));
+
+    // Kiểm tra xem form đã được nhập chưa dựa trên dữ liệu thật (không tính object rỗng)
     let isFilled = false;
     if (formType === 'awareness') isFilled = !!todayJournal?.awarenessSubmittedAt;
     if (formType === 'standards') isFilled = !!todayJournal?.standardsSubmittedAt;
-    if (formType === 'behavior') isFilled = !!extraLogs?.form2;
-    if (formType === 'form3') isFilled = !!extraLogs?.form3;
-    if (formType === 'form4') isFilled = Array.isArray(extraLogs?.form4) && extraLogs.form4.length > 0;
-    if (formType === 'form5') isFilled = !!extraLogs?.form5;
-    if (formType === 'form7') isFilled = !!extraLogs?.form7;
-    if (formType === 'form8') isFilled = Array.isArray(extraLogs?.form8) && extraLogs.form8.length > 0;
-    if (formType === 'form9') isFilled = !!extraLogs?.form9;
-    if (formType === 'form12') isFilled = !!extraLogs?.form12;
+    if (formType === 'behavior') {
+      const row = extraLogs?.form2;
+      isFilled =
+        row?.customerMetCount !== null &&
+        row?.customerMetCount !== undefined;
+    }
+    if (formType === 'form3') {
+      const row = extraLogs?.form3;
+      isFilled = hasAnyText(row, ['negativeThought', 'newMindset', 'behaviorChange']);
+    }
+    if (formType === 'form4') {
+      isFilled =
+        Array.isArray(extraLogs?.form4) &&
+        extraLogs.form4.some((row) =>
+          hasAnyText(row, [
+            'customerName',
+            'customerIssue',
+            'consequence',
+            'solutionOffered',
+            'valueBasedPricing',
+            'result',
+          ]),
+        );
+    }
+    if (formType === 'form5') {
+      const row = extraLogs?.form5;
+      isFilled = hasAnyText(row, ['tomorrowLesson', 'differentAction']);
+    }
+    if (formType === 'form7') {
+      const row = extraLogs?.form7;
+      isFilled = hasAnyText(row, ['keptStandard', 'backslideSign', 'solution']);
+    }
+    if (formType === 'form8') {
+      isFilled =
+        Array.isArray(extraLogs?.form8) &&
+        extraLogs.form8.some((row) =>
+          hasAnyText(row, ['situation', 'oldBelief', 'newChosenBelief', 'newBehavior', 'result']),
+        );
+    }
+    if (formType === 'form9') {
+      const row = extraLogs?.form9;
+      isFilled = hasAnyText(row, ['selfLimitArea', 'proofBehavior', 'raiseStandard', 'actionPlan']);
+    }
+    if (formType === 'form12') {
+      const row = extraLogs?.form12;
+      isFilled = hasAnyText(row, ['declarationText', 'commitmentSignature']);
+    }
 
     // Chưa có dữ liệu thật thì phải là chưa nộp, không được hiển thị "Chờ duyệt"
     if (!isFilled) return 'NOT_SUBMITTED';
@@ -409,7 +452,7 @@ const Journey90Page = () => {
 
     if (reviewStatus === 'APPROVED') return 'APPROVED';
     if (isFormShared(formType)) return 'APPROVED'; // Coi như khóa (read-only) nếu đã share
-    return defaultStatus;
+    return isFilled ? defaultStatus : 'NOT_SUBMITTED';
   };
 
   const loadJournals = async () => {
@@ -871,6 +914,7 @@ const Journey90Page = () => {
   };
 
   const openTodayForm = async () => {
+    setSelectedDateKey(todayKey);
     setShowForm(true);
     setActiveEform(availableForms[0] || 'awareness');
     setInfoText('');
@@ -1275,7 +1319,7 @@ const Journey90Page = () => {
                       deepInquiry: form.deepInquiry,
                       fullConsult: form.fullConsult,
                       persistence: form.persistence,
-                      status: getFormStatus('behavior', todayJournal?.evaluation ? 'APPROVED' : 'PENDING')
+                      status: getFormStatus('behavior', 'PENDING')
                     }}
                     onSubmit={submitBehaviorForm}
                     isSubmitting={submitting}
@@ -1298,7 +1342,7 @@ const Journey90Page = () => {
                       oldMindset: form.form3OldMindset,
                       newMindset: form.form3NewMindset,
                       actionChange: form.form3ActionChange,
-                      status: getFormStatus('form3', todayJournal?.evaluation ? 'APPROVED' : 'PENDING')
+                      status: getFormStatus('form3', 'PENDING')
                     }}
                     onSubmit={submitForm3}
                     isSubmitting={submitting}
@@ -1318,7 +1362,7 @@ const Journey90Page = () => {
                     userRole="EMPLOYEE"
                     initialData={{
                       salesActivities: form.form4Rows,
-                      status: getFormStatus('form4', todayJournal?.evaluation ? 'APPROVED' : 'PENDING')
+                      status: getFormStatus('form4', 'PENDING')
                     }}
                     onSubmit={submitForm4}
                     isSubmitting={submitting}
@@ -1339,7 +1383,7 @@ const Journey90Page = () => {
                     initialData={{
                       lessonLearned: form.form5Lesson,
                       actionPlan: form.form5Action,
-                      status: getFormStatus('form5', todayJournal?.evaluation ? 'APPROVED' : 'PENDING')
+                      status: getFormStatus('form5', 'PENDING')
                     }}
                     onSubmit={submitForm5}
                     isSubmitting={submitting}
@@ -1359,7 +1403,7 @@ const Journey90Page = () => {
                     userRole="EMPLOYEE"
                     initialData={{
                       beliefTransformations: form.form8Rows,
-                      status: getFormStatus('form8', todayJournal?.evaluation ? 'APPROVED' : 'PENDING')
+                      status: getFormStatus('form8', 'PENDING')
                     }}
                     onSubmit={submitForm8}
                     isSubmitting={submitting}
