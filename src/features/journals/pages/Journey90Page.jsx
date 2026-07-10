@@ -521,11 +521,23 @@ const Journey90Page = () => {
   const [extraLogs, setExtraLogs] = useState({});
 
   useEffect(() => {
+    let cancelled = false;
     if (selectedDateKey) {
-      journalService.getLogsHistory(null, selectedDateKey).then(res => {
-        setExtraLogs(res || {});
-      }).catch(e => console.error(e));
+      journalService
+        .getLogsHistory(null, selectedDateKey)
+        .then((res) => {
+          if (cancelled) return;
+          setExtraLogs(res || {});
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            console.error(e);
+          }
+        });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [selectedDateKey]);
 
   useEffect(() => {
@@ -915,6 +927,7 @@ const Journey90Page = () => {
 
   const openTodayForm = async () => {
     setSelectedDateKey(todayKey);
+    setExtraLogs({});
     setShowForm(true);
     setActiveEform(availableForms[0] || 'awareness');
     setInfoText('');
@@ -927,6 +940,7 @@ const Journey90Page = () => {
         detail = await journalService.getById(todayJournal.id).catch(() => ({}));
       }
       const extraLogsData = await journalService.getLogsHistory(null, todayKey).catch(() => ({}));
+      setExtraLogs(extraLogsData || {});
       
       setForm({
         avoidance: normalizeText(detail?.avoidance),
