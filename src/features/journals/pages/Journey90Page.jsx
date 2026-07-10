@@ -213,7 +213,7 @@ const Journey90Page = () => {
   const [submitting, setSubmitting] = useState(false);
   const [coachingDraft, setCoachingDraft] = useState(createInitialCoachingDraft());
   const todayKey = toDateKey(getEffectiveToday(isManager));
-  const coachingDateKey = selectedDateKey || todayKey;
+  const coachingDateKey = todayKey;
   const availableCoachingForms = useMemo(() => {
     return resolveAllowedCoachingFormsByDate(coachingDateKey, coachingPhaseConfigs);
   }, [coachingDateKey, coachingPhaseConfigs]);
@@ -1676,10 +1676,7 @@ const Journey90Page = () => {
                   type="button"
                   className="btn outline"
                   onClick={() => {
-                    if (selectedStatus === 'future') {
-                      setErrorText('Chưa đến ngày này, chưa thể điền form coaching.');
-                      return;
-                    }
+                    setSelectedDateKey(todayKey);
                     setInfoText('');
                     setErrorText('');
                     setShowCoachingForm(true);
