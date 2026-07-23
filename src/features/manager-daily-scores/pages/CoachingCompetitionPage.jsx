@@ -147,9 +147,8 @@ const CoachingCompetitionPage = () => {
               className="text-muted"
               style={{ fontSize: '13px', marginTop: '8px', maxWidth: '760px' }}
             >
-              File import nhập chi tiết theo tiểu mục: Mục 3 gồm 3.1, 3.2, 3.3; Mục 4 gồm
-              4.1, 4.2, 4.3, 4.4, 4.5; Mục 5 gồm 5.1. Hệ thống sẽ cộng các cột chi tiết này
-              khi xuất báo cáo.
+              Mục 4.1, 4.2, 4.4 được hệ thống tự động tính từ dữ liệu Import ĐHKD (Thống kê toàn tỉnh).
+              File import thi đua này dùng để nhập Mục 3 (3.1, 3.2, 3.3), Mục 4.3, 4.5 và Mục 5 (5.1).
             </div>
           </div>
         ) : null}
